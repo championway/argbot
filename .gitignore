@@ -1,0 +1,11 @@
+*~
+*.bag
+*.ply
+*.pyc
+.DS_Store
+*.swp
+*.swo
+*.pcd
+catkin_ws/build
+catkin_ws/devel
+catkin_ws/.catkin_workspace
