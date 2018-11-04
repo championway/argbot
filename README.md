@@ -58,9 +58,9 @@ $ source environment.sh
 $ roslaunch hector_mapping mapping_no_odom.launch
 (Hector SLAM without wheel odometry)
 ```
-To do list:
+-To do list:
 - [ ] Test gmapping with hector slam 
-- [] Make sure how turtlebot3 localization works
+- [ ] Make sure how turtlebot3 localization works
 
 ## Kinematics
 
