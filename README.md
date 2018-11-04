@@ -74,6 +74,18 @@ To do list:
 ```
 ```
 
+## Perception
+
+### Point Cloud
+
+```
+```
+
+### Image
+
+```
+```
+
 ## Path Planning
 
 ### RRT
@@ -81,13 +93,7 @@ To do list:
 ```
 ```
 
-### Pure Pursuit
-
-```
-```
-## Perception
-
-### Point Cloud
+### A*
 
 ```
 ```
