@@ -14,11 +14,18 @@
 
 ## Sensor
 
-### IMU
-- Sparkfun 9Dof Razor IMU
 
 ### Laser Scanner
-- RPilidar 
+- RPlidar
+
+### Monocular Camera
+- Pi camera
+
+### IMU
+- 
+
+### Ultrasound sensor
+- 
 
 # Installation
 
