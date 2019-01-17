@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+	<arg name="visual" default="true" doc="for Rviz"/> 
+	<!--node pkg="classify" type="cluster_pcl2points" name="cluster_pcl2points" output="screen"></node-->
+	<node pkg="planar_segmentation" type="cluster_ros" name="cluster_ros" output="screen">
+		<param name="visual" value="$(arg visual)"/>
+	</node>
+</launch>

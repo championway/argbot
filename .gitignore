@@ -6,6 +6,8 @@
 *.swp
 *.swo
 *.pcd
+*.caffemodel
 catkin_ws/build
 catkin_ws/devel
 catkin_ws/.catkin_workspace
+catkin_ws/src/map/
