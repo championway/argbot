@@ -2,6 +2,7 @@
 *.bag
 *.ply
 *.pyc
+*.pth
 .DS_Store
 *.swp
 *.swo
