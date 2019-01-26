@@ -65,6 +65,7 @@ class navigate():
 			for j in range(self.width):
 				self.occupancygrid[i][j] = msg.data[i*self.width + j]
 		self.get_map = True
+		
 	def cb_odom(self, msg):
 		pose = [msg.pose.pose.position.x, msg.pose.pose.position.y]
 		if not self.get_map:

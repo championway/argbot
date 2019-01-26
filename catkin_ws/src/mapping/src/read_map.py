@@ -51,7 +51,7 @@ class read_map():
 		self.new_map.info = msg.info
 		for i in range(h):
 			for j in range(w):
-				self.new_map .data.append(self.occupancygrid[i][j])
+				self.new_map.data.append(self.occupancygrid[i][j])
 
 	def publish_topic(self):
 		x = int((self.click_pt[0]-self.origin.position.x)/self.resolution)
