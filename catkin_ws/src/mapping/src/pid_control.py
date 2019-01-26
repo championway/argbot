@@ -11,19 +11,22 @@ from sensor_msgs.msg import Image, LaserScan
 from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PoseArray, Pose, PoseStamped
 from visualization_msgs.msg import Marker, MarkerArray
-from nav_msgs.msg import OccupancyGrid, MapMetaData
+from nav_msgs.msg import OccupancyGrid, MapMetaData, Odometry
 import rospkg
 from cv_bridge import CvBridge, CvBridgeError
 from dynamic_reconfigure.server import Server
 from mapping.cfg import pos_PIDConfig, ang_PIDConfig
+from robotx_gazebo.msg import UsvDrive
 
 class Robot_PID():
 	def __init__(self):
 		self.node_name = rospy.get_name()
+
+		self.goal = [-10, -10]
 		rospy.loginfo("[%s] Initializing " %(self.node_name))
-		#rospy.Subscriber('/map', OccupancyGrid, self.call_back, queue_size = 1, buff_size = 2**24)
-		#rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.cb_rviz, queue_size = 1)
-		self.pub_map = rospy.Publisher('/new_map', OccupancyGrid, queue_size = 1)
+
+		rospy.Subscriber('/odometry/filtered', Odometry, self.odom_cb, queue_size = 1, buff_size = 2**24)
+		self.pub_cmd = rospy.Publisher("/cmd_drive", UsvDrive, queue_size = 1)
 
 		self.pos_control = PID_control("Position")
 		self.ang_control = PID_control("Angular")
@@ -31,22 +34,44 @@ class Robot_PID():
 		self.pos_srv = Server(pos_PIDConfig, self.pos_pid_cb, "Position")
 		self.ang_srv = Server(ang_PIDConfig, self.ang_pid_cb, "Angular")
 
-		self.goal = [10, 10]
-
 		self.initialize_PID()
 
-	def localization_cb(self, msg):
-		# subscribe localization
-		pos_output = self.pos_control.update(self.get_distance(p1, self.goal))
-		agn_output = self.ang_control.update(self.get_angle(p1, p2, p3))
-		# Publish v, omega
+	def odom_cb(self, msg):
+		robot_position = [msg.pose.pose.position.x, msg.pose.pose.position.y]
+		quat = (msg.pose.pose.orientation.x,\
+				msg.pose.pose.orientation.y,\
+				msg.pose.pose.orientation.z,\
+				msg.pose.pose.orientation.w)
+		_, _, yaw = tf.transformations.euler_from_quaternion(quat)
+		#yaw = yaw + np.pi/2
+		goal_distance = self.get_distance(robot_position, self.goal)
+		goal_angle = self.get_goal_angle(yaw, robot_position, self.goal)
+		self.pos_control.update(goal_distance)
+		self.ang_control.update(goal_angle)
+		pos_output = self.pos_control.output
+		ang_output = self.ang_control.output
+		cmd_msg = UsvDrive()
+		cmd_msg.left = ((pos_output+ang_output)/300. -1)
+		cmd_msg.right = ((pos_output-ang_output)/300. -1)
+		print(cmd_msg.left, cmd_msg.right)
+		self.pub_cmd.publish(cmd_msg)
 
 	def initialize_PID(self):
-		self.pos_control.setSampleTime(0.1)
-		self.ang_control.setSampleTime(0.1)
+		self.pos_control.setSampleTime(1)
+		self.ang_control.setSampleTime(1)
 
 		self.pos_control.SetPoint = 0.0
 		self.ang_control.SetPoint = 0.0
+
+	def get_goal_angle(self, robot_yaw, robot, goal):
+		robot_angle = np.degrees(robot_yaw)
+		p1 = [robot[0], robot[1]]
+		p2 = [robot[0], robot[1]+1.]
+		p3 = goal
+		angle = self.get_angle(p1, p2, p3)
+		result = angle - robot_angle
+		result = self.angle_range(result)
+		return result
 
 	def get_angle(self, p1, p2, p3):
 		v0 = np.array(p2) - np.array(p1)
@@ -54,8 +79,17 @@ class Robot_PID():
 		angle = np.math.atan2(np.linalg.det([v0,v1]),np.dot(v0,v1))
 		return np.degrees(angle)
 
+	def angle_range(self, angle): # limit the angle to the range of [-180, 180]
+		if angle > 180:
+			angle = angle - 360
+			angle = self.angle_range(angle)
+		elif angle < -180:
+			angle = angle + 360
+			angle = self.angle_range(angle)
+		return angle
+
 	def get_distance(self, p1, p2):
-		return sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+		return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
 	def pos_pid_cb(self, config, level):
 		print("Position: [Kp]: {Kp}   [Ki]: {Ki}   [Kd]: {Kd}\n".format(**config))
@@ -85,7 +119,7 @@ class PID_control():
 		self.Kd = D
 
 		self.sample_time = 0.00
-		self.current_time = rospy.Time.now()
+		self.current_time = rospy.get_time()
 		self.last_time = self.current_time
 
 		self.clear()
@@ -116,7 +150,7 @@ class PID_control():
 		"""
 		error = self.SetPoint - feedback_value
 
-		self.current_time = time.time()
+		self.current_time = rospy.get_time()
 		delta_time = self.current_time - self.last_time
 		delta_error = error - self.last_error
 
