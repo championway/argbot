@@ -9,7 +9,7 @@ import math
 import time
 from sensor_msgs.msg import Image, LaserScan
 from sensor_msgs.msg import CameraInfo
-from geometry_msgs.msg import PoseArray, Pose, PoseStamped
+from geometry_msgs.msg import PoseArray, Pose, PoseStamped, Point
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import OccupancyGrid, MapMetaData, Odometry
 import rospkg
@@ -32,7 +32,7 @@ class Robot_PID():
 		self.cmd_ctrl_max = 0.95
 		self.cmd_ctrl_min = -0.95
 		self.station_keeping_dis = 3.5
-
+		self.frame_id = 'odom'
 		self.is_station_keeping = False
 		self.stop_pos = []
 		self.final_goal = None # The final goal that you want to arrive
@@ -43,6 +43,7 @@ class Robot_PID():
 		self.sub_goal = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_cb, queue_size=1)
 		rospy.Subscriber('/odometry/filtered', Odometry, self.odom_cb, queue_size = 1, buff_size = 2**24)
 		self.pub_cmd = rospy.Publisher("/cmd_drive", UsvDrive, queue_size = 1)
+		self.pub_goal = rospy.Publisher("/goal_point", Marker, queue_size = 1)
 		self.station_keeping_srv = rospy.Service("/station_keeping", SetBool, self.station_keeping_cb)
 
 		self.pos_control = PID_control("Position")
@@ -59,6 +60,7 @@ class Robot_PID():
 		self.initialize_PID()
 
 	def odom_cb(self, msg):
+		self.frame_id = msg.header.frame_id
 		robot_position = [msg.pose.pose.position.x, msg.pose.pose.position.y]
 		if not self.is_station_keeping:
 			self.stop_pos = [msg.pose.pose.position.x, msg.pose.pose.position.y]
@@ -85,6 +87,7 @@ class Robot_PID():
 		cmd_msg.left = self.cmd_constarin(pos_output - ang_output)
 		cmd_msg.right = self.cmd_constarin(pos_output + ang_output)
 		self.pub_cmd.publish(cmd_msg)
+		self.publish_goal(self.goal)
 
 	def control(self, goal_distance, goal_angle):
 		self.pos_control.update(goal_distance)
@@ -189,23 +192,23 @@ class Robot_PID():
 	def get_distance(self, p1, p2):
 		return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
-	def publish_lookahead(self, robot, lookahead):
+	def publish_goal(self, goal):
 		marker = Marker()
-		marker.header.frame_id = "/odom"
+		marker.header.frame_id = self.frame_id
 		marker.header.stamp = rospy.Time.now()
 		marker.ns = "pure_pursuit"
 		marker.type = marker.SPHERE
 		marker.action = marker.ADD
 		marker.pose.orientation.w = 1
-		marker.pose.position.x = lookahead[0]
-		marker.pose.position.y = lookahead[1]
+		marker.pose.position.x = goal[0]
+		marker.pose.position.y = goal[1]
 		marker.id = 0
 		marker.scale.x = 0.6
 		marker.scale.y = 0.6
 		marker.scale.z = 0.6
 		marker.color.a = 1.0
 		marker.color.g = 1.0
-		self.pub_lookahead.publish(marker)
+		self.pub_goal.publish(marker)
 
 	def pos_pid_cb(self, config, level):
 		print("Position: [Kp]: {Kp}   [Ki]: {Ki}   [Kd]: {Kd}\n".format(**config))

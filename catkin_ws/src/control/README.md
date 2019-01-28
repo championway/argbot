@@ -26,6 +26,11 @@ Note:
 $ rosrun control pid_control.py
 ```
 
+### Rviz
+Open the following topics
+- /odometry/filtered
+- /goal_point
+
 ### Use RQT-GUI interface to tune the PID parameters
 ```
 $ rosrun rqt_gui rqt_gui -s reconfigure
@@ -44,7 +49,7 @@ $ rosrun control navigation.py
 ```
 
 ### Rviz
-Open
+Open the following topics
 - /odometry/filtered
 - /lookahead_point
 - /waypoint_marker
