@@ -24,12 +24,13 @@ class mapping():
 		rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.cb_new_goal, queue_size=1)
 		self.pub_map = rospy.Publisher('/local_map', OccupancyGrid, queue_size = 1)
 		self.pub_rviz = rospy.Publisher("/wp_line", Marker, queue_size = 1)
-		self.resolution = 0.3
+		self.resolution = 0.25
 		self.width = 200
 		self.height = 200
 		self.origin = Pose()
 		self.local_map = OccupancyGrid()
-		self.dilating_size = 4
+		self.dilating_size = 6
+		self.wall_width = 3
 		self.start_planning = False
 		self.goal = []
 		self.astar = AStar()
@@ -72,7 +73,11 @@ class mapping():
 					for m in range(-self.dilating_size, self.dilating_size + 1):
 						for n in range(-self.dilating_size, self.dilating_size + 1):
 							if self.occupancygrid[i+m][j+n] != 100:
-								self.occupancygrid[i+m][j+n] = 50
+								if m > self.wall_width or m < -self.wall_width or n > self.wall_width or n < -self.wall_width:
+									if self.occupancygrid[i+m][j+n] != 90:
+										self.occupancygrid[i+m][j+n] = 50
+								else:
+									self.occupancygrid[i+m][j+n] = 90
 
 		for i in range(self.height):
 			for j in range(self.width):
