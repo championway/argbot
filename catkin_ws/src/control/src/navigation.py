@@ -9,7 +9,7 @@ import math
 import time
 from sensor_msgs.msg import Image, LaserScan
 from sensor_msgs.msg import CameraInfo
-from geometry_msgs.msg import PoseArray, Pose, PoseStamped
+from geometry_msgs.msg import PoseArray, Pose, PoseStamped, Point
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import OccupancyGrid, MapMetaData, Odometry
 import rospkg
@@ -46,6 +46,7 @@ class Robot_PID():
 		self.sub_goal = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_cb, queue_size=1)
 		rospy.Subscriber('/odometry/filtered', Odometry, self.odom_cb, queue_size = 1, buff_size = 2**24)
 		self.pub_cmd = rospy.Publisher("/cmd_drive", UsvDrive, queue_size = 1)
+		self.pub_lookahead = rospy.Publisher("/lookahead_point", Marker, queue_size = 1)
 		self.station_keeping_srv = rospy.Service("/station_keeping", SetBool, self.station_keeping_cb)
 		self.navigate_srv = rospy.Service("/navigation", SetBool, self.navigation_cb)
 
@@ -86,16 +87,18 @@ class Robot_PID():
 		
 		#yaw = yaw + np.pi/2.
 		if reach_goal or reach_goal is None:
-			rospy.loginfo("Arrive at the goal")
+			self.publish_lookahead(robot_position, self.final_goal[-1])
 			goal_distance = self.get_distance(robot_position, self.final_goal[-1])
 			goal_angle = self.get_goal_angle(yaw, robot_position, self.final_goal[-1])
 			pos_output, ang_output = self.station_keeping(goal_distance, goal_angle)
 		elif self.is_station_keeping:
 			rospy.loginfo("Station Keeping")
+			self.publish_lookahead(robot_position, self.goal[0])
 			goal_distance = self.get_distance(robot_position, self.goal[0])
 			goal_angle = self.get_goal_angle(yaw, robot_position, self.goal[0])
 			pos_output, ang_output = self.station_keeping(goal_distance, goal_angle)
 		else:
+			self.publish_lookahead(robot_position, pursuit_point)
 			goal_distance = self.get_distance(robot_position, pursuit_point)
 			goal_angle = self.get_goal_angle(yaw, robot_position, pursuit_point)
 			pos_output, ang_output = self.control(goal_distance, goal_angle)
@@ -151,14 +154,14 @@ class Robot_PID():
 
 	def navigation_cb(self, req):
 		if req.data == True:
+			if not self.is_station_keeping:
+				self.purepursuit.set_goal(self.robot_position, self.goal)
 			self.is_station_keeping = False
-			self.purepursuit.set_goal(self.robot_position, self.goal)
 			self.start_navigation = True
 		else:
 			self.start_navigation = False
 			self.final_goal = None
 			self.goal = self.stop_pos
-			self.is_station_keeping = True
 		res = SetBoolResponse()
 		res.success = True
 		res.message = "recieved"
@@ -233,6 +236,30 @@ class Robot_PID():
 		self.pos_control.setKi(Ki)
 		self.pos_control.setKd(Kd)
 		return config
+
+	def publish_lookahead(self, robot, lookahead):
+		marker = Marker()
+		marker.header.frame_id = "/odom"
+		marker.header.stamp = rospy.Time.now()
+		marker.ns = "pure_pursuit"
+		marker.type = marker.LINE_STRIP
+		marker.action = marker.ADD
+		wp = Point()
+		wp.x, wp.y = robot[:2]
+		wp.z = 0
+		marker.points.append(wp)
+		wp = Point()
+		wp.x, wp.y = lookahead[0], lookahead[1]
+		wp.z = 0
+		marker.points.append(wp)
+		marker.id = 0
+		marker.scale.x = 0.2
+		marker.scale.y = 0.2
+		marker.scale.z = 0.2
+		marker.color.a = 1.0
+		marker.color.b = 1.0
+		marker.color.g = 1.0
+		self.pub_lookahead.publish(marker)
 
 	def ang_pid_cb(self, config, level):
 		print("Angular: [Kp]: {Kp}   [Ki]: {Ki}   [Kd]: {Kd}\n".format(**config))

@@ -189,6 +189,24 @@ class Robot_PID():
 	def get_distance(self, p1, p2):
 		return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
+	def publish_lookahead(self, robot, lookahead):
+		marker = Marker()
+		marker.header.frame_id = "/odom"
+		marker.header.stamp = rospy.Time.now()
+		marker.ns = "pure_pursuit"
+		marker.type = marker.SPHERE
+		marker.action = marker.ADD
+		marker.pose.orientation.w = 1
+		marker.pose.position.x = lookahead[0]
+		marker.pose.position.y = lookahead[1]
+		marker.id = 0
+		marker.scale.x = 0.6
+		marker.scale.y = 0.6
+		marker.scale.z = 0.6
+		marker.color.a = 1.0
+		marker.color.g = 1.0
+		self.pub_lookahead.publish(marker)
+
 	def pos_pid_cb(self, config, level):
 		print("Position: [Kp]: {Kp}   [Ki]: {Ki}   [Kd]: {Kd}\n".format(**config))
 		Kp = float("{Kp}".format(**config))

@@ -75,7 +75,7 @@ class PurePursuit(object):
 			return True
 		# Not reach yet
 		else:
-			self.publish_lookahead(self.destination_pose)
+			#self.publish_lookahead(self.robot_pose[:2], self.destination_pose)
 			self.publish_waypoint(self.waypoints)
 			return False
 
@@ -93,20 +93,25 @@ class PurePursuit(object):
 ################################### Publish topic methods ###################################
 
 	# Publish lookahead, type Point
-	def publish_lookahead(self, lookahead):
+	def publish_lookahead(self, robot, lookahead):
 		marker = Marker()
 		marker.header.frame_id = "/odom"
 		marker.header.stamp = rospy.Time.now()
 		marker.ns = "pure_pursuit"
-		marker.type = marker.SPHERE
+		marker.type = marker.LINE_STRIP
 		marker.action = marker.ADD
-		marker.pose.orientation.w = 1
-		marker.pose.position.x = lookahead[0]
-		marker.pose.position.y = lookahead[1]
+		wp = Point()
+		wp.x, wp.y = robot[:2]
+		wp.z = 0
+		marker.points.append(wp)
+		wp = Point()
+		wp.x, wp.y = lookahead[0], lookahead[1]
+		wp.z = 0
+		marker.points.append(wp)
 		marker.id = 0
-		marker.scale.x = 0.6
-		marker.scale.y = 0.6
-		marker.scale.z = 0.6
+		marker.scale.x = 0.1
+		marker.scale.y = 0.1
+		marker.scale.z = 0.1
 		marker.color.a = 1.0
 		marker.color.g = 1.0
 		self.pub_lookahead.publish(marker)
@@ -120,8 +125,9 @@ class PurePursuit(object):
 		marker.pose.orientation.w = 1.0
 		marker.id = 0
 		marker.type = Marker.LINE_STRIP
-		marker.scale.x = 0.03
-		marker.scale.y = 0.03
+		marker.scale.x = 0.1
+		marker.scale.y = 0.1
+		marker.scale.z = 0.1
 		marker.color.r = 1.0
 		marker.color.a = 1.0
 		for waypoint in waypoints:
