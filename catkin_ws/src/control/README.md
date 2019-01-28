@@ -21,7 +21,7 @@ Note:
 - The config files are in "cfg" folder
 - You can save your parameters as yaml files in rqt-gui interface
 
-## Run the PID control
+## 1. Run the PID control
 ```
 $ rosrun control pid_control.py
 ```
@@ -38,7 +38,7 @@ Choose the "PID_control" and you should see the following:
 
 Then you can tune parameters whatever you want
 
-## Run Navigation using pure pursuit
+## 2. Run Navigation using pure pursuit
 ```
 $ rosrun control navigation.py
 ```
