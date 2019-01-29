@@ -31,7 +31,7 @@ class Robot_PID():
 		self.pos_station_min = -0.5
 		self.cmd_ctrl_max = 0.95
 		self.cmd_ctrl_min = -0.95
-		self.station_keeping_dis = 3.5
+		self.station_keeping_dis = 3.5 # meters
 		self.frame_id = 'odom'
 		self.is_station_keeping = False
 		self.stop_pos = []

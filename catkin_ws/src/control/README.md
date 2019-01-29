@@ -43,6 +43,12 @@ Choose the "PID_control" and you should see the following:
 
 Then you can tune parameters whatever you want
 
+### Rosservice
+```
+$ rosservice call /station_keeping "data: true"
+$ rosservice call /station_keeping "data: false"
+```
+
 ## 2. Run Navigation using pure pursuit
 ```
 $ rosrun control navigation.py
@@ -64,3 +70,14 @@ Choose the "PID_control" and you should see the following:
 - Position
 - Position_station
 - LookAhead
+
+### Rosservice
+```
+Click your goal points first
+$ rosservice call /navigation "data: true"
+$ rosservice call /navigation "data: false"
+At this moment, you can start to choose your next goal points
+
+$ rosservice call /station_keeping "data: true"
+$ rosservice call /station_keeping "data: false"
+```
