@@ -1,4 +1,5 @@
 *~
+*.jpg
 *.bag
 *.ply
 *.pyc
