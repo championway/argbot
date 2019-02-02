@@ -58,8 +58,8 @@ class Tracking():
 		self.goal = self.final_goal
 
 		rospy.loginfo("[%s] Initializing " %(self.node_name))
-		self.image_sub = rospy.Subscriber("/MONICA/camera/rgb/image_rect_color", Image, self.img_cb, queue_size=1)
-		#self.image_sub = rospy.Subscriber("/BRIAN/camera_node/image/compressed", CompressedImage, self.img_cb, queue_size=1)
+		#self.image_sub = rospy.Subscriber("/BRIAN/camera_node/image/compressed", Image, self.img_cb, queue_size=1)
+		self.image_sub = rospy.Subscriber("/BRIAN/camera_node/image/compressed", CompressedImage, self.img_cb, queue_size=1, buff_size = 2**24)
 		self.pub_cmd = rospy.Publisher("/MONICA/cmd_drive", UsvDrive, queue_size = 1)
 		self.pub_goal = rospy.Publisher("/goal_point", Marker, queue_size = 1)
 		self.image_pub = rospy.Publisher("/predict_img", Image, queue_size = 1)
@@ -80,9 +80,9 @@ class Tracking():
 
 	def img_cb(self, msg):
 		try:
-			#np_arr = np.fromstring(msg.data, np.uint8)
-			#cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-			cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+			np_arr = np.fromstring(msg.data, np.uint8)
+			cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+			#cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
 		except CvBridgeError as e:
 			print(e)
 		(rows, cols, channels) = cv_image.shape
