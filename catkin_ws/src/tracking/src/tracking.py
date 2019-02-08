@@ -86,8 +86,8 @@ class Tracking():
 		except CvBridgeError as e:
 			print(e)
 		(rows, cols, channels) = cv_image.shape
-		self.width = rows
-		self.height = cols
+		self.width = cols
+		self.height = rows
 		predict = self.predict(cv_image)
 		if predict is None:
 			return
@@ -104,8 +104,6 @@ class Tracking():
 		cmd_msg = UsvDrive()
 		cmd_msg.left = self.cmd_constarin(pos_output + ang_output)
 		cmd_msg.right = self.cmd_constarin(pos_output - ang_output)
-		print(cmd_msg.left)
-		print(cmd_msg.right)
 		self.pub_cmd.publish(cmd_msg)
 		#self.publish_goal(self.goal)
 
@@ -136,15 +134,33 @@ class Tracking():
 		if coords is None:
 			return None
 		angle, dis, center = self.BBx2AngDis(coords)
-		cv2.circle(img, (int(center[0]), int(center[1])), 20, (0,0,255), -1)
+		cv2.circle(img, (int(center[0]), int(center[1])), 10, (0,0,255), -1)
 		cv2.rectangle(img, (int(coords[0][0]), int(coords[0][1])),\
-							(int(coords[0][0] + coords[1]), int(coords[0][1] + coords[2])),(0,0,255),10)
+							(int(coords[0][0] + coords[1]), int(coords[0][1] + coords[2])),(0,0,255),5)
 		try:
+			img = self.draw_cmd(img, dis, angle)
 			self.image_pub.publish(self.bridge.cv2_to_imgmsg(img, "bgr8"))
 		except CvBridgeError as e:
 			print(e)
 		return angle, dis
 
+	def draw_cmd(self, img, dis, angle):
+		v = dis
+		omega = angle
+		rad = omega*math.pi/2. # [-1.57~1.57]
+		#if rad > math.pi: rad = math.pi
+		#if rad < -math.pi: rad = -math.pi
+		rad = rad - math.pi/2. # rotation
+		radius = 100
+		v_length = radius*10*math.sqrt(v**2 + v**2)/math.sqrt(1**2 + 1**2)
+		if v_length > radius:
+			v_length = radius
+		x = v_length*math.cos(rad)
+		y = v_length*math.sin(rad)
+		center = (int(self.width/2.), int(self.height))
+		cv2.circle(img, center, radius, (255, 0, 255), 8)
+		cv2.arrowedLine(img, center, (int(center[0]+x), int(center[1]+y)), (0, 255, 255), 8)
+		return img
 
 	def BBx2AngDis(self, coords):
 		x = coords[0][0]
@@ -152,12 +168,11 @@ class Tracking():
 		w = coords[1]
 		h = coords[2]
 		center = (x + w/2., y + h/2.)
-		angle = self.width/2. - center[0]
+		angle = (center[0]-self.width/2.)/(self.width/2.)
 		dis = (h)/(self.height)
 		return angle, dis, center
 
 	def control(self, goal_distance, goal_angle):
-		print("DIS: ", goal_distance)
 		self.pos_control.update(10*(goal_distance - self.const_SA))
 		self.ang_control.update(goal_angle)
 
