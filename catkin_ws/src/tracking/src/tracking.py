@@ -148,18 +148,22 @@ class Tracking():
 		v = dis
 		omega = angle
 		rad = omega*math.pi/2. # [-1.57~1.57]
-		#if rad > math.pi: rad = math.pi
-		#if rad < -math.pi: rad = -math.pi
-		rad = rad - math.pi/2. # rotation
-		radius = 100
-		v_length = radius*10*math.sqrt(v**2 + v**2)/math.sqrt(1**2 + 1**2)
+		rad = rad - math.pi/2. # rotae for correct direction
+		radius = 120
+		alpha = 0.3
+		v_length = radius*math.sqrt(v**2 + v**2)/math.sqrt(1**2 + 1**2)
 		if v_length > radius:
 			v_length = radius
 		x = v_length*math.cos(rad)
 		y = v_length*math.sin(rad)
+		x_max = radius*math.cos(rad)
+		y_max = radius*math.sin(rad)
 		center = (int(self.width/2.), int(self.height))
-		cv2.circle(img, center, radius, (255, 0, 255), 8)
-		cv2.arrowedLine(img, center, (int(center[0]+x), int(center[1]+y)), (0, 255, 255), 8)
+		draw_img = img.copy()
+		cv2.circle(draw_img, center, radius, (255, 255, 255), 10)
+		cv2.addWeighted(draw_img, alpha, img, 1 - alpha, 0, img)
+		#cv2.circle(img, (int(center[0]+x_max), int(center[1]+y_max)), 15, (255, 255, 255), -1)
+		cv2.arrowedLine(img, center, (int(center[0]+x), int(center[1]+y)), (255, 255, 255), 7)
 		return img
 
 	def BBx2AngDis(self, coords):
@@ -169,7 +173,7 @@ class Tracking():
 		h = coords[2]
 		center = (x + w/2., y + h/2.)
 		angle = (center[0]-self.width/2.)/(self.width/2.)
-		dis = (h)/(self.height)
+		dis = (self.height - h)/(self.height)
 		return angle, dis, center
 
 	def control(self, goal_distance, goal_angle):
