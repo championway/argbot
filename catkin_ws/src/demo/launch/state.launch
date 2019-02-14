@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+	<!--arg name="visual" default="true" doc="for Rviz"--> 
+	<include file="$(find pointcloud_to_laserscan)/launch/pcl2laser.launch"></include>
+	<node pkg="classify" type="environment_predict.py" name="environment_predict" output="screen"></node>
+</launch>
