@@ -1,8 +1,7 @@
 import torch
 from torch.autograd import Function
 from ..box_utils import decode, nms
-#from data import voc as cfg
-
+from ..config import subt as cfg
 
 class Detect(Function):
     """At test time, Detect is the final layer of SSD.  Decode location preds,
@@ -19,8 +18,7 @@ class Detect(Function):
         if nms_thresh <= 0:
             raise ValueError('nms_threshold must be non negative.')
         self.conf_thresh = conf_thresh
-        #self.variance = cfg['variance']
-        self.variance = [0.1, 0.2]
+        self.variance = cfg['variance']
 
     def forward(self, loc_data, conf_data, prior_data):
         """

@@ -31,3 +31,6 @@ include_directories(
 
 add_executable(wall_detection src/wall_detection.cpp)
 target_link_libraries(wall_detection ${catkin_LIBRARIES})
+
+add_executable(watch_tower src/watch_tower.cpp)
+target_link_libraries(watch_tower ${catkin_LIBRARIES})

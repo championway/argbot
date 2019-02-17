@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from layers import *
-#from data import voc, coco
+from layers.config import subt
 import os
 
 
@@ -29,21 +29,7 @@ class SSD(nn.Module):
         super(SSD, self).__init__()
         self.phase = phase
         self.num_classes = num_classes
-        #self.cfg = (coco, voc)[num_classes == 21]
-        self.cfg =  {
-            'num_classes': 21,
-            'lr_steps': (80000, 100000, 120000),
-            'max_iter': 120000,
-            'feature_maps': [38, 19, 10, 5, 3, 1],
-            'min_dim': 300,
-            'steps': [8, 16, 32, 64, 100, 300],
-            'min_sizes': [30, 60, 111, 162, 213, 264],
-            'max_sizes': [60, 111, 162, 213, 264, 315],
-            'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
-            'variance': [0.1, 0.2],
-            'clip': True,
-            'name': 'VOC',
-        }
+        self.cfg = subt
         self.priorbox = PriorBox(self.cfg)
         self.priors = Variable(self.priorbox.forward(), volatile=True)
         self.size = size

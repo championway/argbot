@@ -149,8 +149,9 @@ def decode(loc, priors, variances):
     Return:
         decoded bounding box predictions
     """
-    priors = priors.cuda()
-    loc = loc.cuda()
+    if torch.cuda.is_available():
+        priors = priors.cuda()
+        loc = loc.cuda()
     boxes = torch.cat((
         priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:],
         priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1])), 1)
