@@ -30,7 +30,7 @@ class navigate():
 		self.origin = None
 		self.click_pt = None
 		self.if_click = False
-		self.arr_threshold = 1
+		self.arr_threshold = 0.5
 		self.old_goal = None
 		self.goal = None
 		self.get_map = False

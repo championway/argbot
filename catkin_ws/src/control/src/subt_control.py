@@ -26,10 +26,11 @@ class Robot_PID():
 		self.dis4constV = 3. # Distance for constant velocity
 		self.pos_ctrl_max = 0.7
 		self.pos_ctrl_min = 0
-		self.ang_ctrl_max = 0.5
-		self.ang_ctrl_min = -0.5
+		self.ang_ctrl_max = 1.0
+		self.ang_ctrl_min = -1.0
 		self.pos_station_max = 0.5
 		self.pos_station_min = -0.5
+		self.turn_threshold = 20
 		self.cmd_ctrl_max = 0.7
 		self.cmd_ctrl_min = -0.7
 		self.station_keeping_dis = 0.5 # meters
@@ -98,7 +99,10 @@ class Robot_PID():
 		pos_output = self.pos_constrain(-self.pos_control.output/self.dis4constV)
 
 		# -1 = -180/180 < output/180 < 180/180 = 1
-		ang_output = self.ang_constrain(self.ang_control.output/180.)
+		ang_output = self.ang_constrain(self.ang_control.output*2/180.)
+		if abs(self.ang_control.output) > self.turn_threshold:
+			if pos_output > 0.1:
+				pos_output = 0.1
 		return pos_output, ang_output
 
 	def station_keeping(self, goal_distance, goal_angle):
