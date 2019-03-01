@@ -30,7 +30,8 @@ class navigate():
 		self.origin = None
 		self.click_pt = None
 		self.if_click = False
-		self.arr_threshold = 1
+		self.arr_threshold = 0.5
+		self.goal_distance = 3
 		self.old_goal = None
 		self.goal = None
 		self.get_map = False
@@ -46,7 +47,7 @@ class navigate():
 			self.goal = self.occupancygrid2map(self.get_goal())
 			if self.old_goal is None:
 				good = True
-			elif self.distance(self.old_goal, self.goal) > 2:
+			elif self.distance(self.old_goal, self.goal) > self.goal_distance:
 				good = True
 		self.old_goal = self.goal[:]
 
