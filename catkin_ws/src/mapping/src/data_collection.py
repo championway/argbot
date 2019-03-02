@@ -49,12 +49,17 @@ class navigate():
 		self.point_size = 2
 
 		# For data writing
+		self.SAVE_ROOT = "/media/arg_ws3/TOSHIBA EXT/data/trajectory/"
+		self.root_file = open(self.SAVE_ROOT + "root.txt", "w")
+		self.start_list = []
+		self.start_frame = ""
+		self.frame_len = 0
 		self.episode_counter = 0
 		self.time_old = rospy.get_time()
 		self.time_now = rospy.get_time()
 		self.DATA_PREFIX = "stage4_"
-		self.SAVE_PATH_IMG = "/media/arg_ws3/TOSHIBA EXT/data/trajectory/images/"
-		self.SAVE_PATH_ANN = "/media/arg_ws3/TOSHIBA EXT/data/trajectory/annotations/"
+		self.SAVE_PATH_IMG = self.SAVE_ROOT + "images/"
+		self.SAVE_PATH_ANN = self.SAVE_ROOT + "annotations/"
 		self.FILE_NAME = ""
 		self.COUNTER = 0
 		self.NEXT_FRAME = ""
@@ -73,6 +78,8 @@ class navigate():
 			os.makedirs(self.SAVE_PATH_ANN)
 
 	def writing_data(self):
+		if self.IS_FIRST_FRAME == "True":
+			self.start_frame = self.FILE_NAME
 		self.IMG_NAME = self.FILE_NAME
 		file = open(self.SAVE_PATH_ANN + self.FILE_NAME + ".txt", "w")
 		data = ""
@@ -89,6 +96,7 @@ class navigate():
 		file.close()
 		cv2.imwrite(self.SAVE_PATH_IMG + self.IMG_NAME + ".jpg", self.img)
 		self.IS_FIRST_FRAME = "False"
+		self.frame_len = self.frame_len + 1
 
 	def initial_scan(self):
 		self.scan_width = int(self.range_max*self.scale*2 + self.border*2)
@@ -101,6 +109,9 @@ class navigate():
 		self.occupancygrid = np.zeros((self.height, self.width))
 
 	def update_goal(self):
+		if self.ORIGIN_X != "":
+			self.start_list.append([self.start_frame, self.frame_len])
+			self.root_file.write(str(self.start_frame + "," + str(self.frame_len) + "\n"))
 		good = False
 		while(not good):
 			self.goal = self.occupancygrid2map(self.get_goal())
@@ -110,6 +121,7 @@ class navigate():
 				good = True
 		self.old_goal = self.goal[:]
 		self.IS_FIRST_FRAME = "True"
+		self.frame_len = 0
 		self.ORIGIN_X = str(self.goal[0])
 		self.ORIGIN_Y = str(self.goal[1])
 		self.episode_counter = self.episode_counter + 1
@@ -220,5 +232,10 @@ class navigate():
 
 if __name__ == '__main__':
 	rospy.init_node('navigate')
-	foo = navigate()
+	node = navigate()
 	rospy.spin()
+	if rospy.is_shutdown():
+		print("")
+		rospy.loginfo("Shutdown!!!!!!!!!!!!")
+		rospy.loginfo("Writing File......")
+		node.root_file.close()
