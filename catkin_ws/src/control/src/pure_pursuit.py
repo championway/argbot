@@ -20,7 +20,7 @@ class PurePursuit(object):
 		self.waypoints = []
 		self.current_waypoint_index = 0
 		self.distance_from_path = None
-		self.lookahead_distance = 5
+		self.lookahead_distance = 1
 		self.threshold_proximity = self.lookahead_distance   # How close the robot needs to be to the final waypoint to stop driving
 		self.active = True
 		self.start = True
@@ -45,10 +45,13 @@ class PurePursuit(object):
 	def set_goal(self, robot, goal):
 		self.initial_param()
 		#print("Get waypoint list")
+		far_enough = False
 		self.waypoints.append(robot)
 		if self.get_waypoint:
 			for i in range(len(goal)):
-				self.waypoints.append([goal[i][0], goal[i][1]])
+				if far_enough or self.distanceBtwnPoints(robot[0], robot[1], goal[i][0], goal[i][1]) > self.lookahead_distance:
+					self.waypoints.append([goal[i][0], goal[i][1]])
+					far_enough == True
 			self.robot_go = True
 			self.get_waypoint = False
 		

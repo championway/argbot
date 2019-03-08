@@ -46,6 +46,13 @@ typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudXYZRGB;
 class WallDetection{
 private:
   string node_name;
+
+  // For point cloud declare variables
+  string source_frame;
+  string target_frame;
+  tf::StampedTransform transformStamped;
+  Eigen::Affine3d transform_eigen;
+
   // Only point cloud in these range will be take into account
   double range_min;
   double range_max;
@@ -88,6 +95,8 @@ WallDetection::WallDetection(ros::NodeHandle &n){
   nh = n;
   counts = 0;
   node_name = ros::this_node::getName();
+
+  source_frame = "/map";
 
   range_min = 0.0;
   range_max = 30.0;
@@ -144,6 +153,7 @@ bool WallDetection::clear_bounary(std_srvs::Trigger::Request &req, std_srvs::Tri
 }
 
 void WallDetection::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
+  target_frame = cloud_msg->header.frame_id;
   counts++;
   //return if no cloud data
   if ((cloud_msg->width * cloud_msg->height) == 0 || counts % 3 == 0)
@@ -174,6 +184,7 @@ void WallDetection::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
   }
 
   pose_array.header = cloud_msg->header;
+  //pose_array.header.frame_id = source_frame;
   pub_points.publish(pose_array);
   
   clock_t t_end = clock();
@@ -183,6 +194,7 @@ void WallDetection::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
   sensor_msgs::PointCloud2 pcl_output;
   pcl::toROSMsg(*cloud_out, pcl_output);
   pcl_output.header = cloud_msg->header;
+  //pcl_output.header.frame_id = source_frame;
   pub_cloud.publish(pcl_output);
 }
 
@@ -214,6 +226,17 @@ void WallDetection::pcl_preprocess(const PointCloudXYZRGB::Ptr cloud_in, PointCl
   cloud_out->width = num;
   cloud_out->height = 1;
   cloud_out->points.resize(num);
+
+  /*try{
+    listener.waitForTransform(source_frame, target_frame, ros::Time(), ros::Duration(2.0));
+    listener.lookupTransform(source_frame, target_frame, ros::Time(), transformStamped);
+    tf::transformTFToEigen(transformStamped, transform_eigen);
+    pcl::transformPointCloud(*cloud_out, *cloud_out, transform_eigen);
+  }
+  catch (tf::TransformException ex){
+    ROS_INFO("[%s] Can't find transfrom betwen [%s] and [%s] ", node_name.c_str(), source_frame.c_str(), target_frame.c_str());
+    return;
+  }*/
 }
 
 int main (int argc, char** argv)

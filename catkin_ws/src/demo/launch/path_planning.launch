@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+	<!--arg name="visual" default="true" doc="for Rviz"--> 
+	<!--include file="$(find lidar_perception)/launch/pcl2laser.launch"></include-->
+
+	<node pkg="mapping" type="gt_odom.py" name="gt_odom" output="screen"></node>
+	
+	<node pkg="lidar_perception" type="wall_detection" name="wall_detection" output="screen"></node>
+	
+	<node pkg="lidar_perception" type="pcl2occupancy.py" name="pcl2occupancy" output="screen"></node>
+</launch>
