@@ -44,7 +44,7 @@ class AStar():
             count = count + 1
             if count > self.h_w:
                 print("A* failed to find a solution")
-                return self.pre_path
+                return self.pre_path, False
 
             # Get the current node
             current_node = self.open_list[0]
@@ -66,7 +66,7 @@ class AStar():
                     path.append(current.position)
                     current = current.parent
                 self.pre_path = path[::-1]
-                return path[::-1] # Return reversed path
+                return path[::-1], True # Return reversed path
 
             # Generate children
             children = []

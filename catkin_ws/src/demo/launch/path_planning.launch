@@ -6,6 +6,8 @@
 	<node pkg="mapping" type="gt_odom.py" name="gt_odom" output="screen"></node>
 	
 	<node pkg="lidar_perception" type="wall_detection" name="wall_detection" output="screen"></node>
-	
+
 	<node pkg="lidar_perception" type="pcl2occupancy.py" name="pcl2occupancy" output="screen"></node>
+
+	<!--node pkg="control" type="subt_pid.py" name="subt_pid" output="screen"></node-->
 </launch>

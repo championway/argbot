@@ -37,12 +37,17 @@ class mapping():
 		self.wall_width = 3
 		self.start_planning = False
 		self.goal = []
+		self.goal_occupancygrid = []
 		self.astar = AStar()
 		self.msg_count = 0
 		self.border = 50
 		self.frame_id = None
 		self.map_frame = "/map"
 		self.robot_pose = None
+		self.static_local = False
+		self.transpose_matrix = None
+		self.old_transform_matrix = None
+		self.pre_path = Path()
 
 	def init_param(self):
 		self.occupancygrid = np.zeros((self.height, self.width))
@@ -73,11 +78,18 @@ class mapping():
 		self.planning_map.header = msg.header
 		try:
 			position, quaternion = tf_.lookupTransform(self.map_frame, msg.header.frame_id, rospy.Time(0))
-			transpose_matrix = transformer.fromTranslationRotation(position, quaternion)
-			self.robot_pose = np.dot(transpose_matrix, [0, 0, 0, 1])
+			self.transpose_matrix = transformer.fromTranslationRotation(position, quaternion)
+			self.robot_pose = np.dot(self.transpose_matrix, [0, 0, 0, 1])
+			self.origin.position.x =  -self.width*self.resolution/2. + self.robot_pose[0]
+			self.origin.position.y =  -self.height*self.resolution/2. + self.robot_pose[1]
+			self.local_map.info.origin = self.origin
+			if self.goal!= []:
+				goal_temp = np.dot(self.transpose_matrix, [self.dx, self.dy, 0, 1])
+				self.goal_occupancygrid = self.map2occupancygrid(goal_temp)
+				self.start_planning = True
 			for i in range(len(msg.poses)):
 				origin_p = np.array([msg.poses[i].position.x, msg.poses[i].position.y, msg.poses[i].position.z, 1])
-				new_p = np.dot(transpose_matrix, origin_p)
+				new_p = np.dot(self.transpose_matrix, origin_p)
 				p = (new_p[0], new_p[1])
 				x, y = self.map2occupancygrid(p)
 				width_in_range = (x >= self.width - self.dilating_size or x <= self.dilating_size)
@@ -123,18 +135,29 @@ class mapping():
 						self.cost_map[i][j] = self.occupancygrid[i][j]
 		start_point = self.map2occupancygrid((self.robot_pose[0], self.robot_pose[1]))
 		start = (start_point[1], start_point[0])
-		end = (self.goal[1], self.goal[0])
+		end = (self.goal_occupancygrid[1], self.goal_occupancygrid[0])
 		self.astar.initial(self.cost_map, start, end)
-		path = self.astar.planning()
-		self.pub_topic(path)
+		path, success = self.astar.planning()
+		if success:
+			self.old_transform_matrix = self.transpose_matrix
+			self.pre_path = self.pub_topic(path)
+		else:
+			old_path = []
+			for p in self.pre_path.poses:
+				p_occupancygrid = self.map2occupancygrid([p.pose.position.x, p.pose.position.y])
+				old_path.append([p_occupancygrid[1], p_occupancygrid[0]])
+			_ = self.pub_topic(old_path)
+
 		for i in range(self.height):
 			for j in range(self.width):
 				self.planning_map.data.append(self.cost_map[i][j])
 		self.pub_planning_map.publish(self.planning_map)
 
 	def cb_new_goal(self, p):
-		self.goal = self.map2occupancygrid([p.pose.position.x, p.pose.position.y])
-		self.start_planning = True
+		self.goal = [p.pose.position.x, p.pose.position.y]
+		# ========== For wall following ==========
+		self.dx = self.goal[0] - self.robot_pose[0]
+		self.dy = self.goal[1] - self.robot_pose[1]
 
 	def occupancygrid2map(self, p):
 		x = p[0]*self.resolution + self.origin.position.x + self.resolution/2.
@@ -181,6 +204,7 @@ class mapping():
 			marker.points.append(point)
 		self.pub_rviz.publish(marker)
 		self.pub_path.publish(path_msg)
+		return path_msg
 
 if __name__ == '__main__':
 	rospy.init_node('mapping')
