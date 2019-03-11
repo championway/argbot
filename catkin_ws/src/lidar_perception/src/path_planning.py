@@ -42,7 +42,7 @@ class AStar():
         count = 0
         while len(self.open_list) > 0:
             count = count + 1
-            if count > self.h_w:
+            if count > self.h_w/2:
                 print("A* failed to find a solution")
                 return self.pre_path, False
 

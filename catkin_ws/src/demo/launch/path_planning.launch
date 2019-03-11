@@ -7,7 +7,9 @@
 	
 	<node pkg="lidar_perception" type="wall_detection" name="wall_detection" output="screen"></node>
 
-	<node pkg="lidar_perception" type="pcl2occupancy.py" name="pcl2occupancy" output="screen"></node>
+	<!--node pkg="lidar_perception" type="pcl2occupancy.py" name="pcl2occupancy" output="screen"></node-->
 
-	<!--node pkg="control" type="subt_pid.py" name="subt_pid" output="screen"></node-->
+	<node pkg="control" type="subt_pid.py" name="subt_pid" output="screen"></node>
+
+	<node pkg="control" type="pure_pursuit_point.py" name="pure_pursuit_point" output="screen"></node>
 </launch>

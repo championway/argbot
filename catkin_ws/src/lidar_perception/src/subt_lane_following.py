@@ -48,6 +48,7 @@ class mapping():
 		self.transpose_matrix = None
 		self.old_transform_matrix = None
 		self.pre_path = Path()
+		self.radius = 5
 
 	def init_param(self):
 		self.occupancygrid = np.zeros((self.height, self.width))
@@ -83,10 +84,10 @@ class mapping():
 			self.origin.position.x =  -self.width*self.resolution/2. + self.robot_pose[0]
 			self.origin.position.y =  -self.height*self.resolution/2. + self.robot_pose[1]
 			self.local_map.info.origin = self.origin
-			if self.goal!= []:
+			if True or self.goal!= []:
 				#print(self.dx, self.dy)# 15, 7
 				#goal_temp = np.dot(self.transpose_matrix, [self.dx, self.dy, 0, 1])
-				self.goal_occupancygrid = self.map2occupancygrid(self.goal)
+				#self.goal_occupancygrid = self.map2occupancygrid(self.goal)
 				self.start_planning = True
 			for i in range(len(msg.poses)):
 				origin_p = np.array([msg.poses[i].position.x, msg.poses[i].position.y, msg.poses[i].position.z, 1])
@@ -124,6 +125,20 @@ class mapping():
 		if self.start_planning:
 			self.path_planning()
 
+	def get_goal(self):
+		sample = np.linspace(-90, 90, 30)
+		goal_list = []
+		for degree in sample:
+			rad = np.deg2rad(degree)
+			x = self.radius * np.cos(rad)
+			y = self.radius * np.sin(rad)
+			p = np.dot(self.transpose_matrix, [x, y, 0, 1])
+			goal = self.map2occupancygrid([p[0], p[1]])
+			if goal not in goal_list:
+				goal_list.append(goal)
+		return goal_list
+
+
 	def path_planning(self):
 		if self.msg_count % 5 != 0:
 			return
@@ -136,13 +151,19 @@ class mapping():
 						self.cost_map[i][j] = self.occupancygrid[i][j]
 		start_point = self.map2occupancygrid((self.robot_pose[0], self.robot_pose[1]))
 		start = (start_point[1], start_point[0])
-		end = (self.goal_occupancygrid[1], self.goal_occupancygrid[0])
-		self.astar.initial(self.cost_map, start, end)
-		path, success = self.astar.planning()
+		goal_list = self.get_goal()
+		success = False
+		for goal in goal_list:
+			end = (goal[1], goal[0])
+			self.astar.initial(self.cost_map, start, end)
+			path, success = self.astar.planning()
+			if success:
+				break
 		if success:
 			self.old_transform_matrix = self.transpose_matrix
 			self.pre_path = self.pub_topic(path)
 		else:
+			print("No")
 			old_path = []
 			for p in self.pre_path.poses:
 				p_occupancygrid = self.map2occupancygrid([p.pose.position.x, p.pose.position.y])

@@ -95,6 +95,8 @@ void depth_to_point::callback_sync(const sensor_msgs::ImageConstPtr& image, cons
        		point.g = int(intensity[1]);
        		point.b = int(intensity[2]);
        		pc->points.push_back(point);
+          free(x);
+          free(y);
        	} 
        }  
     } 
@@ -102,7 +104,7 @@ void depth_to_point::callback_sync(const sensor_msgs::ImageConstPtr& image, cons
     
     sensor_msgs::PointCloud2 object_cloud_msg;
     toROSMsg(*pc, object_cloud_msg);
-    object_cloud_msg.header.frame_id = "camera_link";
+    object_cloud_msg.header.frame_id = "camera_color_optical_frame";
     pc2.publish(object_cloud_msg);
    
 	return;
