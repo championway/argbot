@@ -32,3 +32,6 @@ include_directories(
 
 add_executable(depth_to_point src/depth_to_point.h src/depth_to_point.cpp)
 target_link_libraries(depth_to_point ${catkin_LIBRARIES})
+
+add_executable(pcl2depth src/pcl2depth.cpp)
+target_link_libraries(pcl2depth ${catkin_LIBRARIES})

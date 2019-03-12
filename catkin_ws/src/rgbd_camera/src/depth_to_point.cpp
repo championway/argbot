@@ -61,6 +61,8 @@ void depth_to_point::callback(const sensor_msgs::ImageConstPtr& msg_depth){
        		point.g = int(intensity[1]);
        		point.b = int(intensity[2]);
        		pc->points.push_back(point);
+       		free(x);
+       		free(y);
        	} 
        }  
     } 
@@ -87,26 +89,33 @@ void depth_to_point::callback_sync(const sensor_msgs::ImageConstPtr& image, cons
        	 	float z = float(img_ptr_depth->image.at<unsigned short int>(nrow,ncol))/1000.;
 
        		getXYZ(y,x,z);
-       		point.x = *x;
-       		point.y = *y;
-       		point.z = z;
+       		point.x = z;
+       		point.y = -*y;
+       		point.z = -*x;
        		Vec3b intensity =  img_ptr_img->image.at<Vec3b>(nrow, ncol); 
        		point.r = int(intensity[0]);
        		point.g = int(intensity[1]);
        		point.b = int(intensity[2]);
        		pc->points.push_back(point);
-          free(x);
-          free(y);
+       		free(x);
+       		free(y);
+       		// delete x;
+       		// delete y;
        	} 
        }  
     } 
+
     //cout << pc->points.size() << endl;
     
     sensor_msgs::PointCloud2 object_cloud_msg;
     toROSMsg(*pc, object_cloud_msg);
     object_cloud_msg.header.frame_id = "camera_color_optical_frame";
     pc2.publish(object_cloud_msg);
-   
+
+	// pc->width    = pc->points.size();
+	// pc->height   = 1;
+	// pc->is_dense = false;
+   	//pcl::io::savePCDFileASCII ("/home/andyser/code/test_pcd.pcd", *pc);
 	return;
 }
 depth_to_point::depth_to_point(){
@@ -125,6 +134,7 @@ void depth_to_point::get_msg(){
 	fy = msg->P[5];
 	cx = msg->P[2];
 	cy = msg->P[6];
+  cout << fx << "," << fy << "," << cx << "," << cy << std::endl;
 	int count = 0;
 	for(int i = 0; i < 3; i++)
 		for(int j = 0; j < 4; j++)
