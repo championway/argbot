@@ -35,3 +35,6 @@ target_link_libraries(depth_to_point ${catkin_LIBRARIES})
 
 add_executable(pcl2depth src/pcl2depth.cpp)
 target_link_libraries(pcl2depth ${catkin_LIBRARIES})
+
+add_executable(image_process src/image_process.cpp)
+target_link_libraries(image_process ${catkin_LIBRARIES})
