@@ -38,7 +38,7 @@ class SPARSE2DENSE():
 		self.generator = GeneratorUNet(in_channels=1, out_channels=1)
 		if self.cuda:
 			self.generator = self.generator.cuda()
-		self.generator.load_state_dict(torch.load('/home/arg_ws3/PyTorch-GAN/implementations/pix2pix/saved_models/sparse2dense/generator_190.pth'))
+		self.generator.load_state_dict(torch.load('/home/arg_ws3/PyTorch-GAN/implementations/pix2pix/saved_models/sparse2dense/generator_8888.pth'))
 		self.cv_depthimage = None
 		self.generate_img = None
 		self.Tensor = torch.cuda.FloatTensor if self.cuda else torch.FloatTensor
@@ -63,12 +63,13 @@ class SPARSE2DENSE():
 		rospy.loginfo("Start Generating depth image")
 
 	def img_cb(self, depth_data):
-		self.cv_depthimage = self.bridge.imgmsg_to_cv2(depth_data, "32FC1")
+		self.cv_depthimage = self.bridge.imgmsg_to_cv2(depth_data, "16UC1")
 		self.generate_image()
-		self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.generate_img, "32FC1"))
+		self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.generate_img, "16SC1"))
 
 	def generate_image(self):
 		prev_time = time.time()
+		self.cv_depthimage = np.array(self.cv_depthimage)/1000.
 		pil_im = PIL.Image.fromarray(self.cv_depthimage)
 		pil_im = self.data_transform(pil_im)
 		pil_im = pil_im.unsqueeze(0)
@@ -76,11 +77,11 @@ class SPARSE2DENSE():
 		my_img = Variable(pil_im.type(self.Tensor))
 		my_img_fake = self.generator(my_img)
 		my_img_fake = my_img_fake.squeeze(0).detach().cpu()
-		pil_ = my_img_fake.mul(255).clamp(0, 255).to(torch.float32).permute(1, 2, 0)
+		#pil_ = my_img_fake.mul(255).clamp(0, 255).to(torch.float32).permute(1, 2, 0)
+		pil_ = my_img_fake.mul(1000).clamp(0, 1000).to(torch.int16).permute(1, 2, 0)
 		#pil_ = my_img_fake.mul(255).clamp(0, 255).byte().permute(1, 2, 0)
 		pil_ = np.array(pil_)
 		pil_ = pil_[...,::-1]
-
 		#pil_ = np.float32(pil_)
 		self.generate_img = cv2.resize(pil_, (640, 480))
 		#print("Hz: ", 1./(time.time() - prev_time))

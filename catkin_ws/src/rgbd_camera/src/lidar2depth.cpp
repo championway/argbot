@@ -52,7 +52,7 @@ typedef pcl::PointCloud<pcl::PointXYZ> PointCloudXYZ;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudXYZRGB;
 bool is_LIDAR = true;
 
-class PCL2Depth{
+class LIDAR2Depth{
 private:
 	string node_name;
 
@@ -100,18 +100,18 @@ private:
 	tf::StampedTransform tf_lidar2cam;
 
 public:
-	PCL2Depth(ros::NodeHandle&);
+	LIDAR2Depth(ros::NodeHandle&);
 	void cbCloud(const sensor_msgs::PointCloud2ConstPtr&);
 	void get_img_coordinate(float, float, float);
 	void pointcloud_to_image(const PointCloudXYZRGB::Ptr, PointCloudXYZRGB::Ptr);
 	void pcl_preprocess(PointCloudXYZRGB::Ptr);
 };
 
-PCL2Depth::PCL2Depth(ros::NodeHandle &n){
+LIDAR2Depth::LIDAR2Depth(ros::NodeHandle &n){
 	nh = n;
 	counts = 0;
 	node_name = ros::this_node::getName();
-	depth_image = cv::Mat(480, 640, CV_16UC1, cv::Scalar(0, 0, 0));
+	depth_image = cv::Mat(480, 640, CV_16SC1, cv::Scalar(0, 0, 0));
 
 	// Publisher
 	pub_cloud = nh.advertise<sensor_msgs::PointCloud2> ("/ppp", 1);
@@ -119,20 +119,20 @@ PCL2Depth::PCL2Depth(ros::NodeHandle &n){
 
 	// Subscriber
 	if(is_LIDAR){
-		sub_cloud = nh.subscribe("/X1/points", 1, &PCL2Depth::cbCloud, this);
+		sub_cloud = nh.subscribe("/X1/points", 1, &LIDAR2Depth::cbCloud, this);
 	}
 	else{
-		sub_cloud = nh.subscribe("/X1/rgbd_camera/depth/points", 1, &PCL2Depth::cbCloud, this);
+		sub_cloud = nh.subscribe("/X1/rgbd_camera/depth/points", 1, &LIDAR2Depth::cbCloud, this);
 	}
 }
 
-void PCL2Depth::get_img_coordinate(float x, float y,float z){
+void LIDAR2Depth::get_img_coordinate(float x, float y,float z){
 	img_x = (x * fx)/z + cx;
 	img_y = (y * fy)/z + cy;
 	return;
 }
 
-void PCL2Depth::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
+void LIDAR2Depth::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 	if(!get_tf){
 		try{
 			lr.lookupTransform("/X1/rgbd_camera_link", "/X1/front_laser",
@@ -164,9 +164,9 @@ void PCL2Depth::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 	PointCloudXYZRGB::Ptr cloud_out(new PointCloudXYZRGB);
 	if(is_LIDAR){
 		pcl::fromROSMsg (*cloud_msg, *cloud_XYZ);
-		copyPointCloud(*cloud_XYZ, *cloud_lidar);
+		copyPointCloud(*cloud_XYZ, *cloud_in);
 		//std::cout<<tf_lidar2cam.getOrigin().x()<<"," <<tf_lidar2cam.getOrigin().y()<<","<<tf_lidar2cam.getOrigin().z()<<std::endl;
-		pcl_ros::transformPointCloud(*cloud_lidar, *cloud_in, tf_lidar2cam);
+		//pcl_ros::transformPointCloud(*cloud_lidar, *cloud_in, tf_lidar2cam);
 	}
 	else{
 		pcl::fromROSMsg (*cloud_msg, *cloud_XYZRGB);
@@ -185,7 +185,7 @@ void PCL2Depth::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 	// PUblish image
 	//std::cout << result.cols << ',' << result.rows << std::endl;
 	cvIMG.header = cloud_msg->header;
-	cvIMG.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
+	cvIMG.encoding = sensor_msgs::image_encodings::TYPE_16SC1;
 	cvIMG.image = depth_image;
 	//img_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", depth_image).toImageMsg();
 	pub_image.publish(cvIMG.toImageMsg());
@@ -198,9 +198,9 @@ void PCL2Depth::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 	pub_cloud.publish(pcl_output);
 }
 
-void PCL2Depth::pointcloud_to_image(const PointCloudXYZRGB::Ptr cloud_in, PointCloudXYZRGB::Ptr cloud_out){
+void LIDAR2Depth::pointcloud_to_image(const PointCloudXYZRGB::Ptr cloud_in, PointCloudXYZRGB::Ptr cloud_out){
   //depth_image.setTo(cv::Scalar(0, 0, 0));
-  	depth_image = cv::Mat(480, 640, CV_16UC1, cv::Scalar(0, 0, 0));
+  	depth_image = cv::Mat(480, 640, CV_16SC1, cv::Scalar(0, 0, 0));
 	for(int i = 0; i < cloud_in->points.size(); i++){
 		float x;
 		float y;
@@ -218,7 +218,7 @@ void PCL2Depth::pointcloud_to_image(const PointCloudXYZRGB::Ptr cloud_in, PointC
 				cloud_out->points[i].g = 255;
 				cloud_out->points[i].b = 0;
 				
-				depth_image.at<unsigned short int>(480-int(img_y), 640-int(img_x)) = img_z*1000;
+				depth_image.at<signed short int>(480-int(img_y), 640-int(img_x)) = img_z*1000;
 			}
 		}
 
@@ -245,7 +245,7 @@ void PCL2Depth::pointcloud_to_image(const PointCloudXYZRGB::Ptr cloud_in, PointC
 	//return depth_image;
 }
 
-void PCL2Depth::pcl_preprocess(PointCloudXYZRGB::Ptr cloud_out){
+void LIDAR2Depth::pcl_preprocess(PointCloudXYZRGB::Ptr cloud_out){
 	int num = 0;
 	for (int i=0 ; i <  cloud_out->points.size() ; i++)
 	{
@@ -260,9 +260,9 @@ void PCL2Depth::pcl_preprocess(PointCloudXYZRGB::Ptr cloud_out){
 
 int main (int argc, char** argv)
 {
-	ros::init (argc, argv, "PCL2Depth");
+	ros::init (argc, argv, "LIDAR2Depth");
 	ros::NodeHandle nh("~");
-	PCL2Depth pn(nh);
+	LIDAR2Depth pn(nh);
 	ros::spin ();
 	return 0;
 }
