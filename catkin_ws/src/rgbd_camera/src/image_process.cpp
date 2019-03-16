@@ -74,7 +74,8 @@ private:
 	cv::Mat pcl_img;
 
 	// Counter
-	int counts;
+	int counter = 0;
+	int img_count = 0;
 
 	// for ROS
 	ros::NodeHandle nh;
@@ -128,7 +129,7 @@ IMAGE_PROCESS::IMAGE_PROCESS(ros::NodeHandle &n){
 	sync_->registerCallback(boost::bind(&IMAGE_PROCESS::callback_sync, this, _1, _2));
 	node_name = ros::this_node::getName();
 	out_img = cv::Mat(480, 640, CV_32FC1, cv::Scalar(0, 0, 0));
-	pcl_img = cv::Mat(480, 640, CV_32FC1, cv::Scalar(0, 0, 0));
+	pcl_img = cv::Mat(480, 640, CV_16UC1, cv::Scalar(0, 0, 0));
 
 	// Publisher
 	pub_cloud = nh.advertise<sensor_msgs::PointCloud2> ("/ppp", 1);
@@ -148,6 +149,10 @@ void IMAGE_PROCESS::callback_sync(const sensor_msgs::PointCloud2ConstPtr& cloud_
 		}
 		return;
 	}
+	counter++;
+	if(counter%7 != 0){
+		return;
+	}
 	PointCloudXYZ::Ptr cloud_XYZ(new PointCloudXYZ);	
 	PointCloudXYZRGB::Ptr cloud_lidar(new PointCloudXYZRGB);
 	PointCloudXYZRGB::Ptr cloud_in(new PointCloudXYZRGB);
@@ -157,7 +162,7 @@ void IMAGE_PROCESS::callback_sync(const sensor_msgs::PointCloud2ConstPtr& cloud_
 	copyPointCloud(*cloud_XYZ, *cloud_lidar);
 	pcl_ros::transformPointCloud(*cloud_lidar, *cloud_in, tf_lidar2cam);
 	copyPointCloud(*cloud_in, *cloud_out);
-	pcl_img = cv::Mat(480, 640, CV_32FC1, cv::Scalar(0, 0, 0));
+	pcl_img = cv::Mat(480, 640, CV_16UC1, cv::Scalar(0, 0, 0));
 
 	for(int i = 0; i < cloud_in->points.size(); i++){
 		float x;
@@ -173,7 +178,9 @@ void IMAGE_PROCESS::callback_sync(const sensor_msgs::PointCloud2ConstPtr& cloud_
 			cloud_out->points[i].r = 255;
 			cloud_out->points[i].g = 255;
 			cloud_out->points[i].b = 0;
-			pcl_img.at<float>(480-int(img_y), 640-int(img_x)) = 255;
+			// I change 32FC1 to 16UC1, so the image will become an integer matrix
+			// As a result, I scale up the pixel value just like D435
+			pcl_img.at<unsigned short int>(480-int(img_y), 640-int(img_x)) = img_z*1000;
 		}
 	}
 
@@ -182,19 +189,25 @@ void IMAGE_PROCESS::callback_sync(const sensor_msgs::PointCloud2ConstPtr& cloud_
 	out_img = cv::Mat(480, 640, CV_32FC1, cv::Scalar(0, 0, 0));
 	for( int nrow = 0; nrow < img_ptr_depth->image.rows; nrow++){
 		for(int ncol = 0; ncol < img_ptr_depth->image.cols; ncol++){ 
-			if (std::isnan(img_ptr_depth->image.at<float>(nrow, ncol))){
-			//if (std::isnan(img_ptr_depth->image.at<unsigned short int>(nrow, ncol))){
-				out_img.at<float>(nrow,ncol) = (1.0);
-				pcl_img.at<float>(nrow,ncol) = 0.0;
+			if (std::isnan(img_ptr_depth->image.at<float>(nrow, ncol)) || img_ptr_depth->image.at<float>(nrow, ncol)<=0.0){
+					out_img.at<float>(nrow,ncol) = (1.0);
+					pcl_img.at<unsigned short int>(nrow,ncol) = 0;
 			}
 		}
 	}
 	cvIMG.header = depth_image->header;
-	cvIMG.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
+	cvIMG.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
+	string pcl_fname, depth_fname;
+	// we later need to do denormalize when we want to decode img_ptr_depth->image
+	img_ptr_depth->image.convertTo(img_ptr_depth->image, CV_16UC1, 1000);
+	cv::imwrite("/media/arg_ws3/5E703E3A703E18EB/data/sparse2dense/depth/img_" + std::to_string(img_count) + ".png", img_ptr_depth->image);
+	cv::imwrite("/media/arg_ws3/5E703E3A703E18EB/data/sparse2dense/pcl/img_" + std::to_string(img_count) + ".png", pcl_img);
+	//cv::imwrite("./depth1.png", img_ptr_depth->image);
+	//cv::imwrite("./pcl1.png", pcl_img);
+
 	cvIMG.image = pcl_img;
-	cv::imwrite("pcl_img.png", pcl_img);
-	cv::imwrite("depth_img.png", img_ptr_depth->image);
 	pub_image.publish(cvIMG.toImageMsg());
+	img_count++;
 }
 
 void IMAGE_PROCESS::get_img_coordinate(float x, float y,float z){

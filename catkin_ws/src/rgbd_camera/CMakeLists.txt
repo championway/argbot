@@ -38,3 +38,6 @@ target_link_libraries(pcl2depth ${catkin_LIBRARIES})
 
 add_executable(image_process src/image_process.cpp)
 target_link_libraries(image_process ${catkin_LIBRARIES})
+
+add_executable(depth2lidar src/depth2lidar.cpp)
+target_link_libraries(depth2lidar ${catkin_LIBRARIES})

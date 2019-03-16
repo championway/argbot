@@ -217,12 +217,8 @@ void PCL2Depth::pointcloud_to_image(const PointCloudXYZRGB::Ptr cloud_in, PointC
 				cloud_out->points[i].r = 255;
 				cloud_out->points[i].g = 255;
 				cloud_out->points[i].b = 0;
-				if (img_z < 5){
-					depth_image.at<float>(480-int(img_y), 640-int(img_x)) = 255;
-				}
-				else{
-					depth_image.at<float>(480-int(img_y), 640-int(img_x)) = img_z;
-				}
+				
+				depth_image.at<float>(480-int(img_y), 640-int(img_x)) = img_z;
 			}
 		}
 

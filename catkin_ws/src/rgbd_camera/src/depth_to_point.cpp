@@ -27,7 +27,7 @@
 // 	pcl::removeNaNFromPointCloud(*point, *point, indices);
 // 	return ;
 // }
-bool is_gazebo = false;
+bool is_gazebo = true;
 
 void depth_to_point::getXYZ(float* a, float* b,float zc){
 
@@ -154,33 +154,37 @@ depth_to_point::depth_to_point(){
 
 }
 void depth_to_point::get_msg(){
-  sensor_msgs::CameraInfo::ConstPtr msg;
+sensor_msgs::CameraInfo::ConstPtr msg(new sensor_msgs::CameraInfo);
   if(is_gazebo){
     msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>("/X1/rgbd_camera/rgb/camera_info",ros::Duration(10));
   }
   else{
     msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>("/camera/color/camera_info",ros::Duration(10));
   }
-	fx = msg->P[0];
-	fy = msg->P[5];
-	cx = msg->P[2];
-	cy = msg->P[6];
+  fx = msg->P[0];
+  fy = msg->P[5];
+  cx = msg->P[2];
+  cy = msg->P[6];
+  fx = 554.255;
+  fy = 554.255;
+  cx = 320.5;
+  cy = 240.5;
   cout << fx << "," << fy << "," << cx << "," << cy << std::endl;
-	int count = 0;
-	for(int i = 0; i < 3; i++)
-		for(int j = 0; j < 4; j++)
-			Projection[i][j] = msg->P[count++];
+  int count = 0;
+  for(int i = 0; i < 3; i++)
+    for(int j = 0; j < 4; j++)
+      Projection[i][j] = msg->P[count++];
 
-	if(!is_gazebo){
+  if(!is_gazebo){
     realsense2_camera::ExtrinsicsConstPtr msg1 = ros::topic::waitForMessage<realsense2_camera::Extrinsics>("/camera/extrinsics/depth_to_color",ros::Duration(10));
-  	count = 0;
-  	for(int i = 0; i < 3; i++)
-  		for(int j = 0; j < 3; j++)
-  			extrinsics[i][j] = msg1->rotation[count++];
-  	for(int i = 0; i < 3 ; i++)
-  		extrinsics[i][3] = msg1->translation[i];
+    count = 0;
+    for(int i = 0; i < 3; i++)
+      for(int j = 0; j < 3; j++)
+        extrinsics[i][j] = msg1->rotation[count++];
+    for(int i = 0; i < 3 ; i++)
+      extrinsics[i][3] = msg1->translation[i];
   }
-	return;
+  return;
 }
 int main(int argc, char** argv){
     init(argc, argv, "depth_to_point");
