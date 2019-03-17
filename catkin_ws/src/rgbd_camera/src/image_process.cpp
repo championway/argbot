@@ -200,8 +200,8 @@ void IMAGE_PROCESS::callback_sync(const sensor_msgs::PointCloud2ConstPtr& cloud_
 	string pcl_fname, depth_fname;
 	// we later need to do denormalize when we want to decode img_ptr_depth->image
 	img_ptr_depth->image.convertTo(img_ptr_depth->image, CV_16UC1, 1000);
-	cv::imwrite("/media/arg_ws3/5E703E3A703E18EB/data/sparse2dense/depth/img_" + std::to_string(img_count) + ".png", img_ptr_depth->image);
-	cv::imwrite("/media/arg_ws3/5E703E3A703E18EB/data/sparse2dense/pcl/img_" + std::to_string(img_count) + ".png", pcl_img);
+	//cv::imwrite("/media/arg_ws3/5E703E3A703E18EB/data/sparse2dense/depth/img_" + std::to_string(img_count) + ".png", img_ptr_depth->image);
+	//cv::imwrite("/media/arg_ws3/5E703E3A703E18EB/data/sparse2dense/pcl/img_" + std::to_string(img_count) + ".png", pcl_img);
 	//cv::imwrite("./depth1.png", img_ptr_depth->image);
 	//cv::imwrite("./pcl1.png", pcl_img);
 

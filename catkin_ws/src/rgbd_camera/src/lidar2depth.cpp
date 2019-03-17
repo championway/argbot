@@ -164,9 +164,9 @@ void LIDAR2Depth::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 	PointCloudXYZRGB::Ptr cloud_out(new PointCloudXYZRGB);
 	if(is_LIDAR){
 		pcl::fromROSMsg (*cloud_msg, *cloud_XYZ);
-		copyPointCloud(*cloud_XYZ, *cloud_in);
+		copyPointCloud(*cloud_XYZ, *cloud_lidar);
 		//std::cout<<tf_lidar2cam.getOrigin().x()<<"," <<tf_lidar2cam.getOrigin().y()<<","<<tf_lidar2cam.getOrigin().z()<<std::endl;
-		//pcl_ros::transformPointCloud(*cloud_lidar, *cloud_in, tf_lidar2cam);
+		pcl_ros::transformPointCloud(*cloud_lidar, *cloud_in, tf_lidar2cam);
 	}
 	else{
 		pcl::fromROSMsg (*cloud_msg, *cloud_XYZRGB);

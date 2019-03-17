@@ -69,8 +69,8 @@ void DEPTH2LIDAR::callback(const sensor_msgs::ImageConstPtr& depth_image){
 	else{
     img_ptr_depth = cv_bridge::toCvCopy(depth_image, sensor_msgs::image_encodings::TYPE_16UC1);
   }
-	for( int nrow = 0; nrow < img_ptr_depth->image.rows; nrow++){  
-       for(int ncol = 0; ncol < img_ptr_depth->image.cols; ncol++){  
+	for( int nrow = 10; nrow < img_ptr_depth->image.rows-10; nrow++){  
+       for(int ncol = 10; ncol < img_ptr_depth->image.cols-10; ncol++){  
        	if (img_ptr_depth->image.at<unsigned short int>(nrow,ncol) > 1){
        		
        		pcl::PointXYZRGB point;
