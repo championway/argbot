@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+	<!--arg name="visual" default="true" doc="for Rviz"--> 
+	<!--include file="$(find lidar_perception)/launch/pcl2laser.launch"></include-->
+	<node pkg="lane_following" type="lidar_detection" name="lidar_detection" output="screen"></node>
+
+	<node pkg="lane_following" type="subt_lane_following.py" name="subt_lane_following" output="screen"></node>
+
+	<node pkg="lane_following" type="subt_pid.py" name="subt_pid" output="screen"></node>
+</launch>
