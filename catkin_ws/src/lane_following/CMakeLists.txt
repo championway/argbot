@@ -38,3 +38,6 @@ include_directories(
 
 add_executable(lidar_detection src/lidar_detection.cpp)
 target_link_libraries(lidar_detection ${catkin_LIBRARIES})
+
+add_executable(rgbd_detection src/rgbd_detection.cpp)
+target_link_libraries(rgbd_detection ${catkin_LIBRARIES})
