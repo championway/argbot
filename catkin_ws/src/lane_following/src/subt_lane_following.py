@@ -34,8 +34,8 @@ class mapping():
 		self.height = 200
 		self.origin = Pose()
 		self.local_map = OccupancyGrid()
-		self.dilating_size = 6
-		self.wall_width = 3
+		self.dilating_size = 2
+		self.wall_width = 1
 		self.start_planning = False
 		self.goal = []
 		self.goal_occupancygrid = []
@@ -56,7 +56,7 @@ class mapping():
 		pose = PoseStamped()
 		for i in range(len(self.path)):
 			p = self.occupancygrid2map([self.path[i][1], self.path[i][0]])
-			too_close = self.distanceBtwnPoints(p[0], p[1], 0, 0) < 2
+			too_close = self.distanceBtwnPoints(p[0], p[1], 0, 0) < 1.2
 			if start or not too_close:
 				start = True
 				path.append(p)
@@ -131,7 +131,7 @@ class mapping():
 			self.path_planning()
 
 	def get_goal(self):
-		sample = np.linspace(-90, 90, 15)
+		sample = np.linspace(-90, 180, 30)
 		goal_list = []
 		for degree in sample:
 			rad = np.deg2rad(degree)

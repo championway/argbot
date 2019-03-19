@@ -52,6 +52,7 @@ private:
   string target_frame;
   tf::StampedTransform transformStamped;
   Eigen::Affine3d transform_eigen;
+  Eigen::Matrix4f transform_matrix;
 
   // Only point cloud in these range will be take into account
   double range_min;
@@ -98,19 +99,26 @@ WallDetection::WallDetection(ros::NodeHandle &n){
 
   source_frame = "/map";
 
+  transform_matrix = Eigen::Matrix4f::Identity();
+  float theta = M_PI/2.0;
+  transform_matrix(0,0) = cos(theta);
+  transform_matrix(0,1) = -sin(theta);
+  transform_matrix(1,0) = sin(theta);
+  transform_matrix(1,1) = cos(theta);
+
   range_min = 0.0;
   range_max = 30.0;
   angle_min = -180.0;
   angle_max = 180.0;
-  height_min = 0.3;
-  height_max = 1.5;
+  height_min = -0.3;
+  height_max = 2.5;
 
-  robot_x_max = 1.0;
-  robot_x_min = -1.0;
-  robot_y_max = 1.0;
-  robot_y_min = -1.0;
-  robot_z_max = 1.0;
-  robot_z_min = -1.0;
+  robot_x_max = 0.6;
+  robot_x_min = -0.6;
+  robot_y_max = 0.6;
+  robot_y_min = -0.6;
+  robot_z_max = 1.;
+  robot_z_min = -1.5;
 
   //Read yaml file
   nh.getParam("range_min", range_min);
@@ -140,7 +148,7 @@ WallDetection::WallDetection(ros::NodeHandle &n){
   pub_points = nh.advertise<geometry_msgs::PoseArray> ("/pcl_points", 1);
 
   // Subscriber
-  sub_cloud = nh.subscribe("/X1/points", 1, &WallDetection::cbCloud, this);
+  sub_cloud = nh.subscribe("/velodyne_points", 1, &WallDetection::cbCloud, this);
 }
 
 bool WallDetection::clear_bounary(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res){
@@ -168,6 +176,7 @@ void WallDetection::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
   PointCloudXYZRGB::Ptr cloud_in(new PointCloudXYZRGB);
   PointCloudXYZRGB::Ptr cloud_out(new PointCloudXYZRGB);
   pcl::fromROSMsg (*cloud_msg, *cloud_XYZ);
+  pcl::transformPointCloud(*cloud_XYZ, *cloud_XYZ, transform_matrix);
   copyPointCloud(*cloud_XYZ, *cloud_in);
 
   // Remove out of range points and robot points

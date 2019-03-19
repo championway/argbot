@@ -24,13 +24,13 @@ class Robot_PID():
 	def __init__(self):
 		self.node_name = rospy.get_name()
 		self.dis4constV = 3. # Distance for constant velocity
-		self.pos_ctrl_max = 0.7
+		self.pos_ctrl_max = 0.3
 		self.pos_ctrl_min = 0
-		self.ang_ctrl_max = 1.0
-		self.ang_ctrl_min = -1.0
+		self.ang_ctrl_max = 0.15
+		self.ang_ctrl_min = -0.15
 		self.turn_threshold = 20
-		self.cmd_ctrl_max = 0.7
-		self.cmd_ctrl_min = -0.7
+		self.cmd_ctrl_max = 0.1
+		self.cmd_ctrl_min = -0.1
 		self.arrived_dis = 0.5 # meters
 		self.frame_id = 'map'
 		self.emergency_stop = False
@@ -41,7 +41,7 @@ class Robot_PID():
 		rospy.loginfo("[%s] Initializing " %(self.node_name))
 
 		self.sub_goal = rospy.Subscriber("/pursue_point", PoseStamped, self.goal_cb, queue_size=1)
-		self.pub_cmd = rospy.Publisher("/X1/cmd_vel", Twist, queue_size = 1)
+		self.pub_cmd = rospy.Publisher("/husky_velocity_controller/cmd_vel", Twist, queue_size = 1)
 		self.pub_goal = rospy.Publisher("/goal_point", Marker, queue_size = 1)
 		self.emergency_stop_srv = rospy.Service("/emergency_stop", SetBool, self.emergency_stop_cb)
 
