@@ -177,7 +177,7 @@ Obstacle_Detection::Obstacle_Detection(ros::NodeHandle &n){
   pub_map = nh.advertise<nav_msgs::OccupancyGrid> ("/local_map", 1);
 
   // Subscriber
-  sub_cloud = nh.subscribe("/velodyne_points_32", 1, &Obstacle_Detection::cbCloud, this);
+  sub_cloud = nh.subscribe("/camera/depth_registered/points", 1, &Obstacle_Detection::cbCloud, this);
 }
 
 bool Obstacle_Detection::obstacle_srv(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res){
@@ -203,7 +203,7 @@ void Obstacle_Detection::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_m
   pcl::fromROSMsg (*cloud_msg, *cloud_in);
 
   // transform the point cloud coordinate to let it be same as robot coordinate
-  // pcl::transformPointCloud(*cloud_in, *cloud_in, transform_matrix);
+  pcl::transformPointCloud(*cloud_in, *cloud_in, transform_matrix);
   pcl::transformPointCloud(*cloud_in, *cloud_in, transform_matrix_1);
   // copyPointCloud(*cloud_in, *cloud_out);
 
