@@ -22,13 +22,14 @@ $ catkin_make --pkg depth_camera(do it in your ROS workspace)
 Using roslaunch:
 ```
 $ roslaunch depth_camera obs_detection.cpp
-- By this way, you can use the config/obs_detection.yaml to change your parameters
 ```
+- By this way, you can use the config/obs_detection.yaml to change your parameters
+
 Using rosrun:
 ```
 $ rosrun depth_camera obstacle_detection
-- By this way, you will use the default parameters
 ```
+- By this way, you will use the default parameters
 
 ### Rviz
 Open the following topics
