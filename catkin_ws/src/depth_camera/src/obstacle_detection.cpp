@@ -170,6 +170,9 @@ Obstacle_Detection::Obstacle_Detection(ros::NodeHandle &n){
   ROS_INFO("[%s] Param [range_max] = %f, [range_min] = %f", node_name.c_str(), range_max, range_min);
   ROS_INFO("[%s] Param [angle_max] = %f, [angle_min] = %f", node_name.c_str(), angle_max, angle_min);
   ROS_INFO("[%s] Param [height_max] = %f, [height_min] = %f", node_name.c_str(), height_max, height_min);
+  ROS_INFO("[%s] Param [robot_x_max] = %f, [robot_x_min] = %f", node_name.c_str(), robot_x_max, robot_x_min);
+  ROS_INFO("[%s] Param [robot_y_max] = %f, [robot_y_min] = %f", node_name.c_str(), robot_y_max, robot_y_min);
+  ROS_INFO("[%s] Param [robot_z_max] = %f, [robot_z_min] = %f", node_name.c_str(), robot_z_max, robot_z_min);
 
   // Publisher
   pub_cloud = nh.advertise<sensor_msgs::PointCloud2> ("/pcl_preprocess", 1);
