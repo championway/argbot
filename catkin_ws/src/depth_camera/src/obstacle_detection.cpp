@@ -75,6 +75,8 @@ private:
   const int map_height = 200;
   float map_resolution = 0.5;
   nav_msgs::OccupancyGrid occupancygrid;
+  int obs_size = 2;
+  int dilating_size = 5;
   // int** map_array;
 
   ros::NodeHandle nh;
@@ -109,12 +111,6 @@ Obstacle_Detection::Obstacle_Detection(ros::NodeHandle &n){
   // }
 
   robot_frame = "/base_link";
-  occupancygrid.header.frame_id = robot_frame;
-  occupancygrid.info.resolution = map_resolution;
-  occupancygrid.info.width = map_width;
-  occupancygrid.info.height = map_height;
-  occupancygrid.info.origin.position.x = -map_width*map_resolution/2.;
-  occupancygrid.info.origin.position.y = -map_height*map_resolution/2.;
 
   // rotate -90 degree along x axis
   transform_matrix = Eigen::Matrix4f::Identity();
@@ -164,6 +160,18 @@ Obstacle_Detection::Obstacle_Detection(ros::NodeHandle &n){
   nh.getParam("robot_z_max", robot_z_max);
   nh.getParam("robot_z_min", robot_z_min);
 
+  nh.getParam("robot_frame", robot_frame);
+  nh.getParam("map_resolution", map_resolution);
+  nh.getParam("obs_size", obs_size);
+  nh.getParam("dilating_size", dilating_size);
+
+  occupancygrid.header.frame_id = robot_frame;
+  occupancygrid.info.resolution = map_resolution;
+  occupancygrid.info.width = map_width;
+  occupancygrid.info.height = map_height;
+  occupancygrid.info.origin.position.x = -map_width*map_resolution/2.;
+  occupancygrid.info.origin.position.y = -map_height*map_resolution/2.;
+
   service = nh.advertiseService("/obstacle_srv", &Obstacle_Detection::obstacle_srv, this);
 
   ROS_INFO("[%s] Initializing ", node_name.c_str());
@@ -173,6 +181,8 @@ Obstacle_Detection::Obstacle_Detection(ros::NodeHandle &n){
   ROS_INFO("[%s] Param [robot_x_max] = %f, [robot_x_min] = %f", node_name.c_str(), robot_x_max, robot_x_min);
   ROS_INFO("[%s] Param [robot_y_max] = %f, [robot_y_min] = %f", node_name.c_str(), robot_y_max, robot_y_min);
   ROS_INFO("[%s] Param [robot_z_max] = %f, [robot_z_min] = %f", node_name.c_str(), robot_z_max, robot_z_min);
+  ROS_INFO("[%s] Param [robot_frame] = %s, [map_resolution] = %f", node_name.c_str(), robot_frame.c_str(), map_resolution);
+  ROS_INFO("[%s] Param [obs_size] = %d, [dilating_size] = %d", node_name.c_str(), obs_size, dilating_size);
 
   // Publisher
   pub_cloud = nh.advertise<sensor_msgs::PointCloud2> ("/pcl_preprocess", 1);
@@ -294,7 +304,7 @@ void Obstacle_Detection::mapping(const PointCloudXYZRGB::Ptr cloud){
 
   int map_array[map_height][map_width] = {0};
 
-  for (int i=0 ; i < cloud->points.size() ; i++){
+  for (int i = 0 ; i < cloud->points.size() ; i++){
     x = cloud->points[i].x;
     y = cloud->points[i].y;
     map2occupancygrid(x, y);
@@ -302,6 +312,30 @@ void Obstacle_Detection::mapping(const PointCloudXYZRGB::Ptr cloud){
       map_array[int(y)][int(x)] = 100;
     }
   }
+  //map_array[0][0] = 50;
+
+  // Map dilating
+  for (int j = 0; j < map_height; j++){
+    for (int i = 0; i < map_width; i++){
+      if (map_array[j][i] == 100){
+        for (int m = -dilating_size; m < dilating_size + 1; m++){
+          for (int n = -dilating_size; n < dilating_size + 1; n++){
+            if (map_array[j+m][i+n] != 100){
+              if (m > obs_size || m < -obs_size || n > obs_size || n < -obs_size){
+                if (map_array[j+m][i+n] != 80){
+                  map_array[j+m][i+n] = 50;
+                }
+              }
+              else{
+                map_array[j+m][i+n] = 80;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
 
   for (int j = 0; j < map_height; j++){
     for (int i = 0; i < map_width; i++){
