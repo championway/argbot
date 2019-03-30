@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+    <arg name="config_file" default="obs_detection"/>
+
+    <!-- PointCloud preprocess -->
+    <node pkg="depth_camera" name="obstacle_detection" type="obstacle_detection" output="screen" clear_params="true" required="true">
+        <rosparam command="load" file="$(find depth_camera)/config/$(arg config_file).yaml"/>
+    </node>
+</launch>
