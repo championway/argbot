@@ -21,7 +21,7 @@ $ catkin_make --pkg depth_camera(do it in your ROS workspace)
 ## 1. Run the detection node
 Using roslaunch:
 ```
-$ roslaunch depth_camera obs_detection.cpp
+$ roslaunch depth_camera obs_detection.launch
 ```
 - By this way, you can use the config/obs_detection.yaml to change your parameters
 
