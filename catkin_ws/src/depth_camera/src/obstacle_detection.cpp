@@ -8,12 +8,11 @@ Subscribe:
 Publish:
   /pcl_preprocess       (sensor_msgs/PointCloud2)
   /pcl_points           (geometry_msgs/PoseArray)
-  /cluster_result       (sensor_msgs/PointCloud2)
+  /local_map            (nav_msgs/OccupancyGrid)
 ***********************************/ 
 #include <iostream>
 #include <vector>
 #include <array>
-#include <time.h>
 #include <string>
 #include <math.h>
 //Ros Lib
@@ -50,7 +49,6 @@ private:
   string node_name;
   string robot_frame;
   Eigen::Matrix4f transform_matrix;
-  Eigen::Matrix4f transform_matrix_1;
 
   // Only point cloud in these range will be take into account
   double range_min;
@@ -73,26 +71,22 @@ private:
   // Define map
   const int map_width = 200;
   const int map_height = 200;
-  float map_resolution = 0.5;
+  float map_resolution;
   nav_msgs::OccupancyGrid occupancygrid;
-  int obs_size = 2;
-  int dilating_size = 5;
-  // int** map_array;
+  int obs_size;
+  int dilating_size;
 
-  ros::NodeHandle nh;
+  ros::NodeHandle nh, pnh;
   ros::Subscriber sub_cloud;
   ros::Subscriber sub_point;
   ros::Publisher  pub_cloud;
   ros::Publisher  pub_points;
   ros::Publisher  pub_map;
 
-  //ros::ServiceClient client
   ros::ServiceServer service;
 
-  tf::TransformListener listener;
-
 public:
-  Obstacle_Detection(ros::NodeHandle&);
+  Obstacle_Detection(ros::NodeHandle&, ros::NodeHandle&);
   void cbCloud(const sensor_msgs::PointCloud2ConstPtr&);
   bool obstacle_srv(std_srvs::Trigger::Request&, std_srvs::Trigger::Response&);
   void pcl_preprocess(const PointCloudXYZRGB::Ptr, PointCloudXYZRGB::Ptr);
@@ -100,80 +94,36 @@ public:
   void map2occupancygrid(float&, float&);
 };
 
-Obstacle_Detection::Obstacle_Detection(ros::NodeHandle &n){
-  nh = n;
+Obstacle_Detection::Obstacle_Detection(ros::NodeHandle &n, ros::NodeHandle &pn):
+                                       nh(n), pnh(pn){
   counts = 0;
   node_name = ros::this_node::getName();
-
-  // map_array = new int*[map_height];
-  // for (int i = 0; i < map_height; ++i){
-  //   map_array[i] = new int[map_width];
-  // }
-
-  robot_frame = "/base_link";
 
   // rotate -90 degree along x axis
   transform_matrix = Eigen::Matrix4f::Identity();
   float theta = -M_PI/2.0;
   transform_matrix(1,1) = cos(theta);
-  transform_matrix(1,2) = -sin(theta);
-  transform_matrix(2,1) = sin(theta);
+  transform_matrix(1,2) = sin(theta);
+  transform_matrix(2,1) = -sin(theta);
   transform_matrix(2,2) = cos(theta);
-
-  // rotate -90 degree along z axis
-  transform_matrix_1 = Eigen::Matrix4f::Identity();
-  float theta1 = -M_PI/2.0;
-  transform_matrix_1(0,0) = cos(theta1);
-  transform_matrix_1(0,1) = -sin(theta1);
-  transform_matrix_1(1,0) = sin(theta1);
-  transform_matrix_1(1,1) = cos(theta1);
-
-  // Declare defalut parameters
-  // Set detecting range
-  range_min = 0.0;
-  range_max = 30.0;
-  angle_min = -180.0;
-  angle_max = 180.0;
-  height_min = -0.3;
-  height_max = 0.5;
-
-  // Set robot range to prevent detecting robot itself as obstacle
-  robot_x_max = 0.05;
-  robot_x_min = -0.6;
-  robot_y_max = 0.1;
-  robot_y_min = -0.1;
-  robot_z_max = 1.;
-  robot_z_min = -1.5;
-
   //Read yaml file and set costumes parameters
-  nh.getParam("range_min", range_min);
-  nh.getParam("range_max", range_max);
-  nh.getParam("angle_min", angle_min);
-  nh.getParam("angle_max", angle_max);
-  nh.getParam("height_min", height_min);
-  nh.getParam("height_max", height_max);
-
-  nh.getParam("robot_x_max", robot_x_max);
-  nh.getParam("robot_x_min", robot_x_min);
-  nh.getParam("robot_y_max", robot_y_max);
-  nh.getParam("robot_y_min", robot_y_min);
-  nh.getParam("robot_z_max", robot_z_max);
-  nh.getParam("robot_z_min", robot_z_min);
-
-  nh.getParam("robot_frame", robot_frame);
-  nh.getParam("map_resolution", map_resolution);
-  nh.getParam("obs_size", obs_size);
-  nh.getParam("dilating_size", dilating_size);
-
-  occupancygrid.header.frame_id = robot_frame;
-  occupancygrid.info.resolution = map_resolution;
-  occupancygrid.info.width = map_width;
-  occupancygrid.info.height = map_height;
-  occupancygrid.info.origin.position.x = -map_width*map_resolution/2.;
-  occupancygrid.info.origin.position.y = -map_height*map_resolution/2.;
-
-  service = nh.advertiseService("/obstacle_srv", &Obstacle_Detection::obstacle_srv, this);
-
+  if(!pnh.getParam("range_min", range_min)) range_min=0.0;
+  if(!pnh.getParam("range_max", range_max)) range_max=30.0;
+  if(!pnh.getParam("angle_min", angle_min)) angle_min = -180.0;
+  if(!pnh.getParam("angle_max", angle_max)) angle_max = 180.0;
+  if(!pnh.getParam("height_min", height_min)) height_min = -0.3;
+  if(!pnh.getParam("height_max", height_max)) height_max = 0.5;
+  if(!pnh.getParam("robot_x_max", robot_x_max)) robot_x_max=0.05;
+  if(!pnh.getParam("robot_x_min", robot_x_min)) robot_x_min=-0.6;
+  if(!pnh.getParam("robot_y_max", robot_y_max)) robot_y_max=0.1;
+  if(!pnh.getParam("robot_y_min", robot_y_min)) robot_y_min=-0.1;
+  if(!pnh.getParam("robot_z_max", robot_z_max)) robot_z_max=1.;
+  if(!pnh.getParam("robot_z_min", robot_z_min)) robot_z_min=-1.5;
+  if(!pnh.getParam("robot_frame", robot_frame)) robot_frame="/base_link";
+  if(!pnh.getParam("map_resolution", map_resolution)) map_resolution=0.3;
+  if(!pnh.getParam("obs_size", obs_size)) obs_size=2;
+  if(!pnh.getParam("dilating_size", dilating_size)) dilating_size=4;
+  // Parameter information
   ROS_INFO("[%s] Initializing ", node_name.c_str());
   ROS_INFO("[%s] Param [range_max] = %f, [range_min] = %f", node_name.c_str(), range_max, range_min);
   ROS_INFO("[%s] Param [angle_max] = %f, [angle_min] = %f", node_name.c_str(), angle_max, angle_min);
@@ -183,14 +133,21 @@ Obstacle_Detection::Obstacle_Detection(ros::NodeHandle &n){
   ROS_INFO("[%s] Param [robot_z_max] = %f, [robot_z_min] = %f", node_name.c_str(), robot_z_max, robot_z_min);
   ROS_INFO("[%s] Param [robot_frame] = %s, [map_resolution] = %f", node_name.c_str(), robot_frame.c_str(), map_resolution);
   ROS_INFO("[%s] Param [obs_size] = %d, [dilating_size] = %d", node_name.c_str(), obs_size, dilating_size);
-
+  // Set map meta data
+  occupancygrid.header.frame_id = robot_frame;
+  occupancygrid.info.resolution = map_resolution;
+  occupancygrid.info.width = map_width;
+  occupancygrid.info.height = map_height;
+  occupancygrid.info.origin.position.x = -map_width*map_resolution/2.;
+  occupancygrid.info.origin.position.y = -map_height*map_resolution/2.;
+  // Service
+  service = nh.advertiseService("/obstacle_srv", &Obstacle_Detection::obstacle_srv, this);
   // Publisher
   pub_cloud = nh.advertise<sensor_msgs::PointCloud2> ("/pcl_preprocess", 1);
   pub_points = nh.advertise<geometry_msgs::PoseArray> ("/pcl_points", 1);
   pub_map = nh.advertise<nav_msgs::OccupancyGrid> ("/local_map", 1);
-
   // Subscriber
-  sub_cloud = nh.subscribe("/camera/depth_registered/points", 1, &Obstacle_Detection::cbCloud, this);
+  sub_cloud = nh.subscribe("/velodyne_points", 1, &Obstacle_Detection::cbCloud, this);
 }
 
 bool Obstacle_Detection::obstacle_srv(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res){
@@ -208,21 +165,19 @@ void Obstacle_Detection::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_m
     counts = 0;
     return ;
   }
-  const clock_t t_start = clock();
-  
   // transfer ros msg to point cloud
-  PointCloudXYZRGB::Ptr cloud_in(new PointCloudXYZRGB);
-  PointCloudXYZRGB::Ptr cloud_out(new PointCloudXYZRGB);
-  pcl::fromROSMsg (*cloud_msg, *cloud_in);
+  PointCloudXYZRGB::Ptr cloud_in(new PointCloudXYZRGB()); 
+  PointCloudXYZ::Ptr cloud_in2(new PointCloudXYZ()); 
+  PointCloudXYZRGB::Ptr cloud_out(new PointCloudXYZRGB());
+  pcl::fromROSMsg (*cloud_msg, *cloud_in2); 
 
   // transform the point cloud coordinate to let it be same as robot coordinate
-  pcl::transformPointCloud(*cloud_in, *cloud_in, transform_matrix);
-  pcl::transformPointCloud(*cloud_in, *cloud_in, transform_matrix_1);
-  // copyPointCloud(*cloud_in, *cloud_out);
+  //pcl::transformPointCloud(*cloud_in2, *cloud_in2, transform_matrix);
+  copyPointCloud(*cloud_in2, *cloud_in); 
 
   // Remove out of range points and robot points
-  pcl_preprocess(cloud_in, cloud_out);
-  mapping(cloud_out);
+  pcl_preprocess(cloud_in, cloud_out); 
+  mapping(cloud_out); 
 
   // ======= convert cluster pointcloud to points =======
   geometry_msgs::PoseArray pose_array;
@@ -232,15 +187,12 @@ void Obstacle_Detection::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_m
     p.position.y = cloud_out->points[i].y;
     p.position.z = cloud_out->points[i].z;
     pose_array.poses.push_back(p);
-  }
+  } 
 
   pose_array.header = cloud_msg->header;
   pose_array.header.frame_id = robot_frame;
-  pub_points.publish(pose_array);
+  pub_points.publish(pose_array); 
   
-  clock_t t_end = clock();
-  //cout << "PointCloud preprocess time taken = " << (t_end-t_start)/(double)(CLOCKS_PER_SEC) << endl;
-
   // Publish point cloud
   sensor_msgs::PointCloud2 pcl_output;
   pcl::toROSMsg(*cloud_out, pcl_output);
@@ -253,34 +205,27 @@ void Obstacle_Detection::pcl_preprocess(const PointCloudXYZRGB::Ptr cloud_in, Po
   // Remove NaN point
   std::vector<int> indices;
   pcl::removeNaNFromPointCloud(*cloud_in, *cloud_in, indices);
-
   // Range filter
   float dis, angle = 0;
   int num = 0;
-  for (int i=0 ; i < cloud_in->points.size() ; i++)
-  {
-    dis = cloud_in->points[i].x * cloud_in->points[i].x +
-          cloud_in->points[i].y * cloud_in->points[i].y;
-    dis = sqrt(dis); //dis = distance between the point and the camera
-    angle = atan2f(cloud_in->points[i].y, cloud_in->points[i].x);
+  for(PointCloudXYZRGB::iterator it=cloud_in->begin();
+       it != cloud_in->end();it++){
+    dis = it->x * it->x + it->y * it->y;
+    dis = sqrt(dis);
+    angle = atan2f(it->y, it->x);
     angle = angle * 180 / M_PI; //angle of the point in robot coordinate space
 
-    // using color to check your point cloud coordinate
-    /*if(cloud_in->points[i].y >= 0){
-      cloud_in->points[i].r = 255;
-    }*/
-
-    // if the point is in or out of the range we define
+    // If the point is in or out of the range we define
     bool is_in_range =  dis >= range_min && dis <= range_max && 
                         angle >= angle_min && angle <= angle_max &&
-                        cloud_in->points[i].z >= height_min && cloud_in->points[i].z <= height_max;
-    // if the point is belongs to robot itself
-    bool is_robot    =  cloud_in->points[i].x <= robot_x_max && cloud_in->points[i].x >= robot_x_min && 
-                        cloud_in->points[i].y <= robot_y_max && cloud_in->points[i].y >= robot_y_min && 
-                        cloud_in->points[i].z <= robot_z_max && cloud_in->points[i].z >= robot_z_min;
-    if (is_in_range && !is_robot)
+                        it->z >= height_min && it->z <= height_max;
+    // If the point is belongs to robot itself
+    bool is_robot    =  it->x <= robot_x_max && it->x >= robot_x_min && 
+                        it->y <= robot_y_max && it->y >= robot_y_min && 
+                        it->z <= robot_z_max && it->z >= robot_z_min;
+    if(is_in_range && !is_robot)
     {
-      cloud_out->points.push_back(cloud_in->points[i]);
+      cloud_out->points.push_back(*it);
       num ++;
     }
   }
@@ -288,7 +233,6 @@ void Obstacle_Detection::pcl_preprocess(const PointCloudXYZRGB::Ptr cloud_in, Po
   cloud_out->width = num;
   cloud_out->height = 1;
   cloud_out->points.resize(num);
-
   // Point cloud noise filter
   pcl::RadiusOutlierRemoval<pcl::PointXYZRGB> outrem;
   outrem.setInputCloud(cloud_out);
@@ -304,15 +248,14 @@ void Obstacle_Detection::mapping(const PointCloudXYZRGB::Ptr cloud){
 
   int map_array[map_height][map_width] = {0};
 
-  for (int i = 0 ; i < cloud->points.size() ; i++){
-    x = cloud->points[i].x;
-    y = cloud->points[i].y;
-    map2occupancygrid(x, y);
+  for (PointCloudXYZRGB::iterator it = cloud->begin(); it != cloud->end() ; ++it){
+    x = it->x;
+    y = it->y;
+    map2occupancygrid(x, y); 
     if (int(y) < map_height && int(x) < map_width && int(y) >= 0 && int(x) >= 0){
       map_array[int(y)][int(x)] = 100;
     }
   }
-  //map_array[0][0] = 50;
 
   // Map dilating
   for (int j = 0; j < map_height; j++){
@@ -320,6 +263,7 @@ void Obstacle_Detection::mapping(const PointCloudXYZRGB::Ptr cloud){
       if (map_array[j][i] == 100){
         for (int m = -dilating_size; m < dilating_size + 1; m++){
           for (int n = -dilating_size; n < dilating_size + 1; n++){
+            if(j+m<0 or j+m>=map_height or i+n<0 or i+n>=map_width) continue;
             if (map_array[j+m][i+n] != 100){
               if (m > obs_size || m < -obs_size || n > obs_size || n < -obs_size){
                 if (map_array[j+m][i+n] != 80){
@@ -327,6 +271,7 @@ void Obstacle_Detection::mapping(const PointCloudXYZRGB::Ptr cloud){
                 }
               }
               else{
+                if(j+m<0 or j+m>=map_height or i+n<0 or i+n>=map_width) continue;
                 map_array[j+m][i+n] = 80;
               }
             }
@@ -335,7 +280,6 @@ void Obstacle_Detection::mapping(const PointCloudXYZRGB::Ptr cloud){
       }
     }
   }
-
 
   for (int j = 0; j < map_height; j++){
     for (int i = 0; i < map_width; i++){
@@ -354,8 +298,8 @@ void Obstacle_Detection::map2occupancygrid(float& x, float& y){
 int main (int argc, char** argv)
 {
   ros::init (argc, argv, "Obstacle_Detection");
-  ros::NodeHandle nh("~");
-  Obstacle_Detection pn(nh);
+  ros::NodeHandle nh, pnh("~");
+  Obstacle_Detection od(nh, pnh);
   ros::spin ();
   return 0;
 }
