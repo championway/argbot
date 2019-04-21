@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<launch>
+  <node pkg="pcl_exercise" type="mask_to_point" name="mask_to_point" output="screen">
+  	<remap from="bbox" to="/mask_to_point"/>
+  </node>
+
+</launch>

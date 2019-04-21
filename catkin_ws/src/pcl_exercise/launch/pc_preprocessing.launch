@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<launch>
+  <node pkg="pcl_exercise" type="pc_preprocessing" name="pc_preprocessing" output="screen">
+  	<!-- <remap from="bbox" to="/input"/> -->
+  </node>
+
+</launch>

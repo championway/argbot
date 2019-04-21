@@ -25,21 +25,21 @@ class SUBT_detection():
 		#self.node_name = rospy.get_name()
 		#rospy.loginfo("[%s] Initializing " %(self.node_name))
 		self.bridge = CvBridge()
-		self.is_compressed = True
+		self.is_compressed = False
 		# Image definition
 		self.width = 640
 		self.height = 480
-		self.labels = ['background', 'people', 'palm']
-		self.prob_threshold = 0.9
+		self.labels = ['background', 'extinguisher', 'driller']
+		self.prob_threshold = 0.3
 		self.objects = []
 		self.net = build_ssd('test', 300, len(self.labels))    # initialize SSD
-		self.net.load_weights('/home/arg_ws3/ssd.pytorch/weights/argbot/argbot_54000.pth')
+		self.net.load_weights('/media/arg_ws3/5E703E3A703E18EB/data/subt_real/model/subt_artifact_40.pth')
 		if torch.cuda.is_available():
 			self.net = self.net.cuda()
 
 		#img = cv2.imread("radio.jpg")
 		self.image_pub = rospy.Publisher("/predict_img", Image, queue_size = 1)
-		self.image_sub = rospy.Subscriber("/usb_cam/image_raw/compressed", CompressedImage, self.img_cb, queue_size=1, buff_size = 2**24)
+		self.image_sub = rospy.Subscriber("/camera/color/image_raw", Image, self.img_cb, queue_size=1, buff_size = 2**24)
 		#self.predict(img)
 
 	def img_cb(self, msg):
@@ -52,6 +52,7 @@ class SUBT_detection():
 		except CvBridgeError as e:
 			print(e)
 		(rows, cols, channels) = cv_image.shape
+		cv2.imwrite('test.jpg', cv_image)
 		self.width = cols
 		self.height = rows
 		predict_img = self.predict(cv_image)
@@ -73,13 +74,17 @@ class SUBT_detection():
 		xx = Variable(x.unsqueeze(0))     # wrap tensor in Variable
 		if torch.cuda.is_available():
 			xx = xx.cuda()
+		t1 = rospy.get_time()
 		y = self.net(xx)
+		t2 = rospy.get_time()
+		print(1./(t2-t1))
 		scale = torch.Tensor(img.shape[1::-1]).repeat(2)
 		detections = y.data	# torch.Size([1, 4, 200, 5]) --> [batch?, class, object, coordinates]
 		objs = []
 		for i in range(detections.size(1)): # detections.size(1) --> class size
 			for j in range(5):	# each class choose top 5 predictions
 				if detections[0, i, j, 0].numpy() > self.prob_threshold:
+					# print(detections[0, i, j, 0].numpy())
 					score = detections[0, i, j, 0]
 					pt = (detections[0, i, j,1:]*scale).cpu().numpy()
 					objs.append([pt[0], pt[1], pt[2]-pt[0]+1, pt[3]-pt[1]+1, i])

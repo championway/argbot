@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<launch>
+  <node pkg="pcl_exercise" type="depth_to_point_whole" name="depth_to_point_whole" output="screen">
+  	<remap from="bbox" to="/input"/>
+  </node>
+
+</launch>
