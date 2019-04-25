@@ -17,6 +17,10 @@ class KalmanFilter(object):
         self.R = np.eye(self.b.shape[0])  # observation noise matrix
         self.lastResult = np.array([[0], [255]])
 
+    def set_dt(self, dt):
+        self.dt = dt
+        self.F = np.array([[1.0, self.dt], [0.0, 1.0]])  # state transition mat
+
     def predict(self):
         """Predict state vector u and variance of uncertainty P (covariance).
             where,
@@ -116,6 +120,11 @@ class Tracker(object):
         self.dist_thresh = dist_thresh
         self.max_trace_length = max_trace_length
         self.track = None
+
+    def set_dt(self, dt):
+        if (self.track is None):
+            return
+        self.track.KF.set_dt(dt)
 
     def Update(self, detection):
         """Update tracks vector using following steps:
