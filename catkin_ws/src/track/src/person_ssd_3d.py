@@ -53,6 +53,7 @@ class PERSON_detection():
 		self.pub_path = rospy.Publisher("/person_path", Marker, queue_size = 1)
 		self.pub_point = rospy.Publisher("/person_point", Marker, queue_size = 1)
 		self.pub_tracking = rospy.Publisher("/tracking_point", Marker, queue_size = 1)
+		self.pub_point_array = rospy.Publisher("/person_point_array", MarkerArray, queue_size = 1)
 		# self.image_sub = rospy.Subscriber("/camera/color/image_raw", Image, self.img_cb, queue_size=1, buff_size = 2**24)
 		image_sub = message_filters.Subscriber('/camera/color/image_raw', Image)
 		depth_sub = message_filters.Subscriber('/camera/aligned_depth_to_color/image_raw', Image)
@@ -126,7 +127,7 @@ class PERSON_detection():
 		self.person_list = []
 		palm_bbx_list = []
 		person_bbx_list = []
-
+		coordinate_list = []
 		for obj in objs:
 			if obj[4] == 0:
 				color = (0, 255, 255)
@@ -150,8 +151,10 @@ class PERSON_detection():
 				self.person_list.append(coordinate)
 				person_bbx_list.append(bbx)
 				self.draw_point(coordinate)
+				coordinate_list.append(coordinate)
 			if self.labels[obj[4]] == 'palm':
 				palm_bbx_list.append(bbx)
+		self.draw_point_array(coordinate_list)
 
 		reset_lock = rospy.get_time() - self.reset_time > 3
 
@@ -263,10 +266,10 @@ class PERSON_detection():
 		marker.header.frame_id = self.frame_id
 		marker.type = marker.POINTS
 		marker.pose.orientation.w = 1
-		marker.scale.x = 0.1
-		marker.scale.y = 0.1
-		marker.scale.z = 0.1
-		marker.color.a = 0.6
+		marker.scale.x = 0.3
+		marker.scale.y = 0.3
+		marker.scale.z = 0.3
+		marker.color.a = 0.7
 		marker.color.g = 1.0
 		p = Point()
 		p.x = coordinate[0]
@@ -274,14 +277,35 @@ class PERSON_detection():
 		marker.points = [p]
 		self.pub_point.publish(marker)
 
+	def draw_point_array(self, coordinate):
+		marker_array = MarkerArray()
+		idx = 0
+		for coor in coordinate:
+			marker = Marker()
+			marker.header.frame_id = self.frame_id
+			marker.type = marker.CUBE
+			marker.action = marker.ADD
+			marker.pose.orientation.w = 1
+			marker.scale.x = 0.5
+			marker.scale.y = 0.5
+			marker.scale.z = 0.5
+			marker.color.a = 0.7
+			marker.color.b = 1.0
+			marker.id = idx
+			idx = idx + 1
+			marker.pose.position.x = coor[0]
+			marker.pose.position.y = coor[1]
+			marker_array.markers.append(marker)
+		self.pub_point_array.publish(marker_array)
+
 	def draw_tracking(self, coordinate):
 		marker = Marker()
 		marker.header.frame_id = self.frame_id
 		marker.type = marker.POINTS
 		marker.pose.orientation.w = 1
-		marker.scale.x = 0.2
-		marker.scale.y = 0.2
-		marker.scale.z = 0.2
+		marker.scale.x = 0.5
+		marker.scale.y = 0.5
+		marker.scale.z = 0.5
 		marker.color.a = 1.0
 		marker.color.r = 1.0
 		p = Point()

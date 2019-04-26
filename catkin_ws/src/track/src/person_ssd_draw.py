@@ -31,7 +31,7 @@ class PERSON_detection():
 		self.width = 640
 		self.height = 480
 		self.labels = ['background', 'person', 'palm']
-		self.prob_threshold = 0.3
+		self.prob_threshold = 0.5
 		self.objects = []
 		self.net = build_ssd('test', 300, len(self.labels))    # initialize SSD
 		self.net.load_weights('/home/user/argbot/catkin_ws/src/track/src/argbot_58000.pth')
