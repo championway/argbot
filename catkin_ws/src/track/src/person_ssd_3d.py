@@ -36,7 +36,7 @@ class PERSON_detection():
 		self.prob_threshold = 0.8
 		self.objects = []
 		self.net = build_ssd('test', 300, len(self.labels))    # initialize SSD
-		self.net.load_weights('/home/user/argbot/catkin_ws/src/track/src/argbot_58000.pth')
+		self.net.load_weights('/home/arg_ws3/argbot/catkin_ws/src/track/src/argbot_58000.pth')
 		if torch.cuda.is_available():
 			self.net = self.net.cuda()
 		msg = rospy.wait_for_message('/camera/color/camera_info', CameraInfo, timeout=None)
