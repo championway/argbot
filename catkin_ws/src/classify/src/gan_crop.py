@@ -11,6 +11,7 @@ from sensor_msgs import point_cloud2
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo, CompressedImage, PointCloud2, PointField
 from geometry_msgs.msg import PoseArray, PoseStamped, Point
+from bb_pointnet.msg import bb_input
 import rospkg
 from nav_msgs.msg import Path
 from cv_bridge import CvBridge, CvBridgeError
@@ -38,20 +39,18 @@ class SPARSE2DENSE():
 		self.cuda = True if torch.cuda.is_available() else False
 		self.width = 640
 		self.height = 480
-		self.prob_threshold = 0.2
-		self.cv_image = None
-		self.border = 5
-		self.net = build_ssd('test', 300, 2)    # initialize SSD
-		self.net.load_weights('/home/arg_ws3/ssd.pytorch/weights/subt_real/subt_real_290.pth')
+		self.prob_threshold = 0.3
+		self.border = 0
+		self.net = build_ssd('test', 300, 4)    # initialize SSD
+		self.net.load_weights('/media/arg_ws3/5E703E3A703E18EB/ssd300_subt_280000.pth')
 		if torch.cuda.is_available():
 			self.net = self.net.cuda()
 
-		self.generator = GeneratorUNet(in_channels=1, out_channels=1)
+		self.generator = GeneratorUNet(in_channels=3, out_channels=1)
 		if self.cuda:
 			self.generator = self.generator.cuda()
-		self.generator.load_state_dict(torch.load('/home/arg_ws3/PyTorch-GAN/implementations/pix2pix/saved_models/bbx_mask/generator_20.pth'))
+		self.generator.load_state_dict(torch.load('/media/arg_ws3/5E703E3A703E18EB/research/pix2pix_cropmask/saved_models/rgb/generator_10.pth'))
 		self.cv_depthimage = None
-		self.generate_img = None
 		self.Tensor = torch.cuda.FloatTensor if self.cuda else torch.FloatTensor
 		self.data_transform = transforms.Compose([transforms.Resize((256, 256), PIL.Image.BICUBIC),
 												  transforms.ToTensor()])
@@ -63,29 +62,36 @@ class SPARSE2DENSE():
 		#-------point cloud with color-------
 		self.depth_sub = message_filters.Subscriber("/camera/aligned_depth_to_color/image_raw", Image)
 		self.image_sub = message_filters.Subscriber("/camera/color/image_raw", Image)
-		self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub], 10, 10)
+		self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub], 5, 5)
 		self.ts.registerCallback(self.img_cb)
 		#------------------------------------
 
 		#self.pc_pub = rospy.Publisher("/pointcloud2_transformed", PointCloud2, queue_size=1)
+		self.rgb_pub = rospy.Publisher("/rgb_img", Image, queue_size = 1)
 		self.image_pub = rospy.Publisher("/generate_dp", Image, queue_size = 1)
+		self.msg_pub = rospy.Publisher("/mask_to_point", bb_input, queue_size = 1)
 		self.points = []
 		rospy.loginfo("Start Generating depth image")
 
 	def img_cb(self, rgb_data, depth_data):
-		self.cv_image = self.bridge.imgmsg_to_cv2(rgb_data, "bgr8")
+		cv_image = self.bridge.imgmsg_to_cv2(rgb_data, "bgr8")
 		cv_depthimage = self.bridge.imgmsg_to_cv2(depth_data, "16UC1")
-		self.predict(cv_depthimage)
+		generate_img = self.predict(cv_image)
+		msg = bb_input()
+		msg.image = rgb_data
+		msg.depth = depth_data
+		msg.mask = self.bridge.cv2_to_imgmsg(generate_img, "8UC1")
+		self.msg_pub.publish(msg)
+		# self.image_pub.publish(self.bridge.cv2_to_imgmsg(generate_img, "8UC1"))
 		#self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.generate_img, "8UC1"))
 
 	def predict(self, image):
-		# Preprocessing
-		#image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-		self.generate_img = np.zeros(image.shape, np.uint8)
-		self.generate_img = self.cv_image.copy()
-		image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-		image = image/10.
-		x = cv2.resize(image, (300, 300)).astype(np.float32)
+		h, w = image.shape[:2]
+		tmp_img = image.copy()
+		generate_img = np.zeros(image.shape, np.uint8)
+		# generate_img = image.copy()
+		img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+		x = cv2.resize(img, (300, 300)).astype(np.float32)
 		x -= (104.0, 117.0, 123.0)
 		x = x.astype(np.float32)
 		x = x[:, :, ::-1].copy()
@@ -95,7 +101,10 @@ class SPARSE2DENSE():
 		xx = Variable(x.unsqueeze(0))     # wrap tensor in Variable
 		if torch.cuda.is_available():
 			xx = xx.cuda()
+		t1 = rospy.get_time()
 		y = self.net(xx)
+		t2 = rospy.get_time()
+		# print(1./(t2-t1))
 		scale = torch.Tensor(image.shape[1::-1]).repeat(2)
 		detections = y.data	# torch.Size([1, 4, 200, 5]) --> [batch?, class, object, coordinates]
 		objs = []
@@ -108,25 +117,45 @@ class SPARSE2DENSE():
 		for obj in objs:
 			region = [int(obj[1] - self.border), int(obj[1] + obj[3] + self.border),\
 					  int(obj[0] - self.border), int(obj[0] + obj[2] + self.border)]
+
 			bbx_img = image[region[0] : region[1], region[2]: region[3]]
-			generate_patch = self.generate_image(bbx_img)
-			#cv2.resize(generate_patch, (obj[2], obj[3]))
-			#cv2.imwrite('test.jpg', bbx_img)
-			mask = generate_patch
-			#ret, mask = cv2.threshold(generate_patch, 100, 255, cv2.THRESH_BINARY)
+			if bbx_img.shape[0] == 0 or bbx_img.shape[1]==0:
+				continue
+			
+			mask = self.generate_image(bbx_img)
+			# lis = []
+			# for i in range(mask.shape[0]):
+			# 	for j in range(mask.shape[1]):
+			# 		if mask[i][j] not in lis:
+			# 			lis.append(mask[i][j])
+			# print(lis)
 			mask = cv2.resize(mask, (region[3]-region[2], region[1]-region[0]))
-			#self.generate_img[region[0] : region[1], region[2]: region[3]] = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-			cv2.rectangle(self.generate_img, (int(obj[0]), int(obj[1])),\
-							(int(obj[0] + obj[2]), int(obj[1] + obj[3])), (255, 255, 0), 3)
-		self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.generate_img, "8UC3"))
-		#return img
+			ret, mask = cv2.threshold(mask, 100, obj[4]+1, cv2.THRESH_BINARY) # pixel value only belongs to 0 or 255
+			if generate_img[region[0] : region[1], region[2]: region[3]].shape[:2] == mask.shape:
+				generate_img[region[0] : region[1], region[2]: region[3]] = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+				if obj[4] == 0:
+					cv2.rectangle(tmp_img, (int(obj[0]), int(obj[1])),\
+					(int(obj[0] + obj[2]), int(obj[1] + obj[3])), (255, 255, 0), 3)
+				elif obj[4] == 1:
+					cv2.rectangle(tmp_img, (int(obj[0]), int(obj[1])),\
+					(int(obj[0] + obj[2]), int(obj[1] + obj[3])), (0, 255, 0), 3)
+				elif obj[4] == 2:
+					cv2.rectangle(tmp_img, (int(obj[0]), int(obj[1])),\
+					(int(obj[0] + obj[2]), int(obj[1] + obj[3])), (255, 255, 0), 3)
+				elif obj[4] == 3:
+					cv2.rectangle(tmp_img, (int(obj[0]), int(obj[1])),\
+					(int(obj[0] + obj[2]), int(obj[1] + obj[3])), (255, 255, 0), 3)
+		generate_img_draw = generate_img.copy()
+		generate_img_draw[generate_img_draw > 0] = 255
+
+		self.image_pub.publish(self.bridge.cv2_to_imgmsg(generate_img_draw, "8UC3"))
+		self.rgb_pub.publish(self.bridge.cv2_to_imgmsg(tmp_img, "bgr8"))
+
+		generate_img = generate_img[:,:,0]
+		return generate_img
 
 	def generate_image(self, bbx_img):
-		bbx_img = bbx_img/1000.
-		#print(bbx_img.dtype)
-		#print(bbx_img.shape)
-		bbx_img = bbx_img[:,:,0]
-		#print(bbx_img.shape)
+		bbx_img = cv2.cvtColor(bbx_img, cv2.COLOR_RGB2BGR)
 		pil_im = PIL.Image.fromarray(bbx_img)
 		pil_im = self.data_transform(pil_im)
 		pil_im = pil_im.unsqueeze(0)

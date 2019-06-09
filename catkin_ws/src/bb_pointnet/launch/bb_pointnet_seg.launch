@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+<launch>
+  <node pkg="bb_pointnet" type="bb_pointnet_prediction.py" name="bb_pointnet_prediction" output="screen"/>
+ 
+</launch>

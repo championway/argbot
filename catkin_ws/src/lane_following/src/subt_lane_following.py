@@ -29,9 +29,9 @@ class mapping():
 		self.pub_rviz = rospy.Publisher("/wp_line", Marker, queue_size = 1)
 		self.pub_path = rospy.Publisher("/planning_path", Path, queue_size = 1)
 		self.pub_point = rospy.Publisher('/pursue_point', PoseStamped, queue_size=10)
-		self.resolution = 0.25
-		self.width = 200
-		self.height = 200
+		self.resolution = 0.10
+		self.width = 150
+		self.height = 150
 		self.origin = Pose()
 		self.local_map = OccupancyGrid()
 		self.dilating_size = 2
@@ -41,7 +41,7 @@ class mapping():
 		self.goal_occupancygrid = []
 		self.astar = AStar()
 		self.msg_count = 0
-		self.border = 50
+		self.border = 20
 		self.frame_id = None
 		self.map_frame = "X1/base_link"
 		self.static_local = False
@@ -131,7 +131,7 @@ class mapping():
 			self.path_planning()
 
 	def get_goal(self):
-		sample = np.linspace(-90, 180, 30)
+		sample = np.linspace(90, -180, 15)
 		goal_list = []
 		for degree in sample:
 			rad = np.deg2rad(degree)
@@ -143,7 +143,7 @@ class mapping():
 		return goal_list
 
 	def path_planning(self):
-		if self.msg_count % 5 != 0:
+		if self.msg_count % 3 != 0:
 			return
 		self.msg_count = 0
 		#self.cost_map = np.zeros((self.height, self.width))

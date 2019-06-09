@@ -1,0 +1,4 @@
+<?xml version="1.0" ?>
+<launch>
+  <node pkg="ssd_prediction" type="bb_ssd_prediction.py" name="bb_ssd_prediction" output="screen"/>
+</launch>

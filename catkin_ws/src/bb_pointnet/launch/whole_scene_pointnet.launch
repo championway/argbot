@@ -1,0 +1,4 @@
+<?xml version="1.0" ?>
+<launch>
+  <node pkg="bb_pointnet" type="whole_scene_pointnet.py" name="whole_scene_pointnet" output="screen"/>
+</launch>

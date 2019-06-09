@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+<launch>
+  <node pkg="pcl_exercise" type="publish_marker" name="publish_marker" output="screen">
+  </node>
+
+</launch>

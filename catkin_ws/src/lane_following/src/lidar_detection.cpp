@@ -111,12 +111,12 @@ WallDetection::WallDetection(ros::NodeHandle &n){
   angle_min = -180.0;
   angle_max = 180.0;
   height_min = -0.3;
-  height_max = 2.5;
+  height_max = 0.3;
 
-  robot_x_max = 0.6;
-  robot_x_min = -0.6;
-  robot_y_max = 0.6;
-  robot_y_min = -0.6;
+  robot_x_max = 0.3;
+  robot_x_min = -0.3;
+  robot_y_max = 0.3;
+  robot_y_min = -0.3;
   robot_z_max = 1.;
   robot_z_min = -1.5;
 
@@ -176,7 +176,7 @@ void WallDetection::cbCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
   PointCloudXYZRGB::Ptr cloud_in(new PointCloudXYZRGB);
   PointCloudXYZRGB::Ptr cloud_out(new PointCloudXYZRGB);
   pcl::fromROSMsg (*cloud_msg, *cloud_XYZ);
-  pcl::transformPointCloud(*cloud_XYZ, *cloud_XYZ, transform_matrix);
+  //pcl::transformPointCloud(*cloud_XYZ, *cloud_XYZ, transform_matrix);
   copyPointCloud(*cloud_XYZ, *cloud_in);
 
   // Remove out of range points and robot points
