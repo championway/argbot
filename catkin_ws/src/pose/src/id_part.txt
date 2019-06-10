@@ -1,0 +1,6 @@
+0 right upper chest
+1 left upper chest
+2 right upper arm
+3 right down arm
+4 left upper arm
+5 left down arm

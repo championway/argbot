@@ -10,6 +10,11 @@ project(pose)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  pose_msgs
+  message_filters
+  sensor_msgs
+  geometry_msgs
+  cv_bridge
 )
 
 ## System dependencies are found with CMake's conventions
@@ -46,7 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
+#add_message_files(
 #   FILES
 #   Message1.msg
 #   Message2.msg
@@ -196,3 +201,6 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_executable(detect_arm src/detect_arm.cpp)
+target_link_libraries(detect_arm ${catkin_LIBRARIES})
