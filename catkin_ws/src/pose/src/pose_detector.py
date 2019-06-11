@@ -27,7 +27,7 @@ class PoseDetector():
         self.is_compressed = False
         self.image_pub = rospy.Publisher("/pose_img", Image, queue_size = 1)
         self.pose_pub = rospy.Publisher("/human_pose", HumanPoses, queue_size = 1)
-        self.image_sub = rospy.Subscriber("/camera/color/image_rect_color", Image, self.img_cb, queue_size=1, buff_size = 2**24)
+        self.image_sub = rospy.Subscriber("/camera/color/image_raw", Image, self.img_cb, queue_size=1, buff_size = 2**24)
 
     def net_init(self):
         self.cpu = False
@@ -37,7 +37,7 @@ class PoseDetector():
         self.height_size = 256
         self.num_keypoints = pose_lib.pose.Pose.num_kpts
         self.net = PoseEstimationWithMobileNet()
-        checkpoint = torch.load("/home/david/Downloads/checkpoint_iter_370000.pth", map_location='cpu')
+        checkpoint = torch.load("/media/arg_ws3/5E703E3A703E18EB/checkpoint_iter_370000.pth", map_location='cpu')
         load_state(self.net, checkpoint)
         self.net = self.net.eval()
         if not self.cpu:
@@ -93,15 +93,18 @@ class PoseDetector():
             human_poses.pose_list.append(human_pose)
             
             pose = pose_lib.pose.Pose(pose_keypoints, pose_entries[n][18])
-            #print('kpts: ', pose_keypoints)
+            # print('kpts: ', pose_keypoints)
             current_poses.append(pose)
-            pose.draw(img)
+            cv2.circle(img, (int(pose_keypoints[3][0]), int(pose_keypoints[3][1])), 15, (255, 255, 255), -1)
+            cv2.circle(img, (int(pose_keypoints[4][0]), int(pose_keypoints[4][1])), 15, (255, 255, 255), -1)
+            print(int(pose_keypoints[4][0]), int(pose_keypoints[4][1]))
+            #pose.draw(img)
             for pose in current_poses:
                 cv2.rectangle(img, (pose.bbox[0], pose.bbox[1]),
                               (pose.bbox[0] + pose.bbox[2], pose.bbox[1] + pose.bbox[3]), (0, 255, 0))
                 cv2.putText(img, 'id: {}'.format(pose.id), (pose.bbox[0], pose.bbox[1] - 16),
                             cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 255))
-        img = cv2.addWeighted(orig_img, 0.6, img, 0.4, 0)
+        #img = cv2.addWeighted(orig_img, 0.6, img, 0.4, 0)
         if human_poses.size != 0:
             human_poses.header.stamp = self.time
             self.pose_pub.publish(human_poses)

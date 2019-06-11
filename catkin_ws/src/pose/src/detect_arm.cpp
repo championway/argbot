@@ -22,6 +22,7 @@ class detect_arm{
 		ros::NodeHandle _nh, _pnh;
 		ros::Subscriber sub_pose;
 		ros::Publisher pub_arm;
+		ros::Publisher pub_image;
 		ros::Publisher pub_arms;
 		cv_bridge::CvImagePtr img_ptr_depth;
 
@@ -31,7 +32,7 @@ class detect_arm{
 		void cbPose(const pose_msgs::HumanPoses&);
 		void callback_sync(const pose_msgs::HumanPoses::ConstPtr&,const sensor_msgs::ImageConstPtr&);
 		void get_camerainfo();
-		void getXYZ(float&, float&, float);
+		void getXYZ(float*, float*, float);
 		void drawRviz();
 
 		message_filters::Subscriber<pose_msgs::HumanPoses> pose_sub;
@@ -48,9 +49,10 @@ class detect_arm{
 				ROS_INFO("Start detectin");
 				get_camerainfo();
 				pub_arm = _pnh.advertise<visualization_msgs::Marker>("/arm_marker", 1);
+				pub_image = nh.advertise<sensor_msgs::Image> ("/img", 1);
 				pub_arms = _pnh.advertise<visualization_msgs::MarkerArray>("/arms_marker", 1);
 				pose_sub.subscribe(_pnh, "/human_pose", 1);
-				depth_sub.subscribe(_pnh, "/camera/depth/image_rect_raw", 1);
+				depth_sub.subscribe(_pnh, "/camera/aligned_depth_to_color/image_raw", 1);
 				sync_.reset(new Sync(MySyncPolicy(10), pose_sub, depth_sub));
 				sync_->registerCallback(boost::bind(&detect_arm::callback_sync, this, _1, _2));
 				
@@ -107,7 +109,7 @@ void detect_arm::get_camerainfo(){
 	sensor_msgs::CameraInfo::ConstPtr msg;
 	bool get_camera_info = false;
 	while(!get_camera_info){
-		msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>("/camera/color/camera_info",ros::Duration(20));
+		msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>("/camera/depth/camera_info",ros::Duration(20));
 		get_camera_info = true;
 	}
 	fx = msg->P[0];
@@ -118,6 +120,16 @@ void detect_arm::get_camerainfo(){
 	return;
 }
 
+void detect_arm::getXYZ(float* a, float* b,float zc){
+
+	float inv_fx = 1.0/fx;
+	float inv_fy = 1.0/fy;
+	*a = (*a - cx * zc) * inv_fx;
+	*b = (*b - cy * zc) * inv_fy;
+	return;
+}
+
+/*
 void detect_arm::getXYZ(float &a, float &b, float zc){
 	float inv_fx = 1.0/fx;
 	float inv_fy = 1.0/fy;
@@ -125,6 +137,7 @@ void detect_arm::getXYZ(float &a, float &b, float zc){
 	b = (b - cy) * zc * inv_fy;
 	return;
 }
+*/
 
 void detect_arm::drawRviz(){
 	marker.header.frame_id = "camera_link";
@@ -137,27 +150,49 @@ void detect_arm::drawRviz(){
 	marker.pose.orientation.z = 0.0;
 	marker.pose.orientation.w = 1.0;
 	marker.scale.x = 0.1;
-	marker.scale.y = 0.1;
+	marker.scale.y = 0.2;
 	marker.scale.z = 0.1;
 	marker.color.a = 1.0;
 	marker.color.r = 0.0;
 	marker.color.g = 1.0;
 	marker.color.b = 0.0;
 	for (int i = 0; i < humanPoses.size(); i++){
-		if (humanPoses[i][6][0] != -1 && humanPoses[i][6][1] != -1){
-			float x = humanPoses[i][6][0];
-			float y = humanPoses[i][6][1];
-			float z = float(img_ptr_depth->image.at<unsigned short int>(y, x))/1000.;;
-			std::cout<<x<<','<<y<<','<<z<<std::endl;
-			getXYZ(y, x, z);
-			std::cout<<x<<','<<y<<','<<z<<std::endl;
-			std::cout<<"============"<<std::endl;
-			marker.pose.position.x = z;
-			marker.pose.position.y = -x;
-			marker.pose.position.z = -y;
+		int idx1 = 3;
+		int idx2 = 4;
+		bool detect_1 = (humanPoses[i][idx1][0] != -1 && humanPoses[i][idx1][1] != -1);
+		bool detect_2 = (humanPoses[i][idx2][0] != -1 && humanPoses[i][idx2][1] != -1);
+		if (detect_1 && detect_2){
+			float* x1 = new float(humanPoses[i][idx1][0]);
+			float* y1 = new float(humanPoses[i][idx1][1]);
+			float z1 = float(img_ptr_depth->image.at<unsigned short int>(int(*y1), int(*x1)))/1000.;
+			detect_arm::getXYZ(y1, x1, z1);
+			// std::cout << *x1 << ',' << *y1 << ',' << z1 <<std::endl;
+			geometry_msgs::Point p1;
+			p1.x = z1;
+			p1.y = -*x1;
+			p1.z = -*y1;
+			float* x2 = new float(humanPoses[i][idx2][0]);
+			float* y2 = new float(humanPoses[i][idx2][1]);
+			float z2 = float(img_ptr_depth->image.at<unsigned short int>(int(*y2), int(*x2)))/1000.;
+			detect_arm::getXYZ(y2, x2, z2);
+			// std::cout << *x2 << ',' << *y2 << ',' << z2 <<std::endl;
+			geometry_msgs::Point p2;
+			p2.x = z2;
+			p2.y = -*x2;
+			p2.z = -*y2;
+			marker.pose.position = p1;
+			// marker.points.clear();
+			// marker.points.push_back(p1);
+			// marker.points.push_back(p2);
+			circle(img_ptr_depth->image, cv::Point(int(humanPoses[i][idx1][0]), int(humanPoses[i][idx1][1])), 10, cv::Scalar(25600), 3, 8, 0);
+			circle(img_ptr_depth->image, cv::Point(int(humanPoses[i][idx2][0]), int(humanPoses[i][idx2][1])), 10, cv::Scalar(25600), 3, 8, 0);
 			break;
 		}
 	}
+	cv_bridge::CvImage cvIMG;
+	cvIMG.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
+	cvIMG.image = img_ptr_depth->image;
+	pub_image.publish(cvIMG.toImageMsg());
 	pub_arm.publish(marker);
 }
 
