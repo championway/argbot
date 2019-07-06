@@ -95,9 +95,9 @@ class PoseDetector():
             pose = pose_lib.pose.Pose(pose_keypoints, pose_entries[n][18])
             # print('kpts: ', pose_keypoints)
             current_poses.append(pose)
-            cv2.circle(img, (int(pose_keypoints[3][0]), int(pose_keypoints[3][1])), 15, (255, 255, 255), -1)
-            cv2.circle(img, (int(pose_keypoints[4][0]), int(pose_keypoints[4][1])), 15, (255, 255, 255), -1)
-            print(int(pose_keypoints[4][0]), int(pose_keypoints[4][1]))
+            cv2.circle(img, (int(pose_keypoints[3][0]), int(pose_keypoints[3][1])), 15, (0, 255, 255), -1)
+            cv2.circle(img, (int(pose_keypoints[4][0]), int(pose_keypoints[4][1])), 15, (255, 0, 255), -1)
+            print(int(pose_keypoints[3][0]), int(pose_keypoints[3][1]))
             #pose.draw(img)
             for pose in current_poses:
                 cv2.rectangle(img, (pose.bbox[0], pose.bbox[1]),
