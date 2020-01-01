@@ -1,0 +1,11 @@
+# for laser scanner detect the cliff
+slope_threshold : -0.5
+lidar_height : 0.45
+num_threshold : 10
+
+angle_max : 0
+angle_min : -90
+
+lidar_rotate_x : -90.0
+lidar_rotate_y : 90.0
+lidar_rotate_z : 0.0

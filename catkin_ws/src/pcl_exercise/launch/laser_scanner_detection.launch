@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<launch>
+  <node pkg="pcl_exercise" type="laser_scanner_detection" name="laser_scanner_detection" output="screen">
+  	<rosparam command="load" file="$(find pcl_exercise)/config/laser_scanner_detection.yaml"/>
+  </node>
+
+</launch>

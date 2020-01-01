@@ -212,5 +212,5 @@ add_executable(mask_to_point src/mask_to_point.h src/mask_to_point.cpp)
 target_link_libraries(mask_to_point ${catkin_LIBRARIES})
 add_dependencies(mask_to_point src/mask_to_point.cpp ${catkin_EXPORTED_TARGETS})
 
-## Add folders to be run by python nosetests
-# catkin_add_nosetests(test)
+add_executable(laser_scanner_detection src/laser_scanner_detection.cpp)
+target_link_libraries(laser_scanner_detection ${catkin_LIBRARIES})
